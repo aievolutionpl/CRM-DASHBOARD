@@ -43,6 +43,26 @@ function run(
     if (input) task.stdin?.end(input);
   });
 }
+export async function testConnection(
+  wid: string,
+  provider: AiProvider,
+  model: string,
+) {
+  const started = Date.now();
+  const result = await generate(
+    wid,
+    provider,
+    model,
+    "Test połączenia. Odpowiedz krótko po polsku, że połączenie działa.",
+    "{}",
+    { maxTokens: 120 },
+  );
+  return {
+    ok: true,
+    ms: Date.now() - started,
+    sample: result.text.slice(0, 300),
+  };
+}
 export async function aiStatus(wid: string) {
   const cli = process.env.LOCAL_AI_CLI_ENABLED === "1";
   const availability = await Promise.all(
@@ -88,7 +108,11 @@ export async function generate(
   model: string,
   prompt: string,
   context: string,
-  options: { system?: string; maxTokens?: number } = {},
+  options: {
+    system?: string;
+    maxTokens?: number;
+    history?: { question: string; answer: string }[];
+  } = {},
 ) {
   if (!validModel(model)) throw Error("Sprawdź identyfikator modelu.");
   const instruction = options.system || systemPrompt;
@@ -106,6 +130,16 @@ export async function generate(
         model,
         messages: [
           { role: "system", content: instruction },
+          ...(options.history || []).flatMap((m) => [
+            { role: "user", content: m.question.slice(0, 2000) },
+            {
+              role: "assistant",
+              content: JSON.stringify({
+                answer: m.answer.slice(0, 4000),
+                actions: [],
+              }),
+            },
+          ]),
           {
             role: "user",
             content: `Kontekst:\n${context}\nPytanie:\n${prompt}`,

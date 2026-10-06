@@ -17,6 +17,40 @@ type Status = {
   cliEnabled: boolean;
 };
 const BUILTIN_MODEL = "evolution-local";
+const ENGINE_KEY = "evolution-agent-engine";
+const FULL_ANALYSIS =
+  "Przeanalizuj wszystkie statystyki firmy i przygotuj priorytety na ten tydzień.";
+function remembered(): { provider: AgentProvider; model: string } {
+  try {
+    const v = JSON.parse(localStorage.getItem(ENGINE_KEY) || "null");
+    if (
+      v &&
+      AGENT_PROVIDERS.includes(v.provider) &&
+      typeof v.model === "string" &&
+      v.model.length <= 151
+    )
+      return v;
+  } catch {}
+  return { provider: "builtin", model: BUILTIN_MODEL };
+}
+type Source = { id: string; label: string; available: boolean; detail: string };
+const steps: Record<Exclude<AgentProvider, "builtin">, string[]> = {
+  openrouter: [
+    "Załóż konto na openrouter.ai i doładuj środki.",
+    "Utwórz klucz API (Keys → Create key) i wklej go poniżej.",
+    "Kliknij „Pobierz modele”, wybierz model i „Sprawdź połączenie”.",
+  ],
+  codex: [
+    "Zainstaluj Codex CLI i zaloguj się kontem ChatGPT: codex login.",
+    "W .env.local ustaw LOCAL_AI_CLI_ENABLED=1 i uruchom aplikację ponownie.",
+    "Wpisz model dostępny w Twoim planie i kliknij „Sprawdź połączenie”.",
+  ],
+  claude: [
+    "Zainstaluj Claude Code i zaloguj się kontem Claude (Pro/Max): claude.",
+    "W .env.local ustaw LOCAL_AI_CLI_ENABLED=1 i uruchom aplikację ponownie.",
+    "Wybierz model (sonnet, opus, haiku) i kliknij „Sprawdź połączenie”.",
+  ],
+};
 const descriptions: Record<AgentProvider, string> = {
   builtin:
     "Działa od razu, offline. Analizuje CRM, zadania i marketing regułami eksperckimi.",
@@ -36,8 +70,13 @@ export default function AiAgent({
   onApplied: () => void;
   request?: { text: string; at: number } | null;
 }) {
-  const [provider, setProvider] = useState<AgentProvider>("builtin"),
-    [model, setModel] = useState(BUILTIN_MODEL),
+  const [provider, setProvider] = useState<AgentProvider>(
+      () => remembered().provider,
+    ),
+    [model, setModel] = useState(() => remembered().model),
+    [sources, setSources] = useState<Source[]>([]),
+    [loaded, setLoaded] = useState(false),
+    [tested, setTested] = useState(""),
     [prompt, setPrompt] = useState(""),
     [key, setKey] = useState(""),
     [messages, setMessages] = useState<AgentMessage[]>([]),
@@ -60,8 +99,11 @@ export default function AiAgent({
       const result = await localRequest(wid, "ai");
       setStatus(result.status);
       setMessages(result.messages);
+      setSources(result.sources || []);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Błąd odczytu agenta.");
+    } finally {
+      setLoaded(true);
     }
   }, [wid]);
   useEffect(() => {
@@ -103,14 +145,67 @@ export default function AiAgent({
     [wid],
   );
   useEffect(() => {
-    if (!request || request.at === handled.current) return;
+    try {
+      localStorage.setItem(ENGINE_KEY, JSON.stringify({ provider, model }));
+    } catch {}
+  }, [provider, model]);
+  useEffect(() => {
+    if (!loaded || !request || request.at === handled.current) return;
     handled.current = request.at;
+    const ready =
+      provider === "builtin" || (Boolean(status[provider]) && Boolean(model));
     queueMicrotask(() => {
-      setProvider("builtin");
-      setModel(BUILTIN_MODEL);
-      void send(request.text, "builtin", BUILTIN_MODEL);
+      if (!ready) {
+        setProvider("builtin");
+        setModel(BUILTIN_MODEL);
+      }
+      void send(
+        request.text,
+        ready ? provider : "builtin",
+        ready ? model : BUILTIN_MODEL,
+      );
     });
-  }, [request, send]);
+  }, [request, send, loaded, provider, model, status]);
+  async function testEngine() {
+    if (provider === "builtin") return;
+    setBusy(true);
+    setError("");
+    setTested("");
+    try {
+      const r = await localRequest(wid, "ai/test", {
+        method: "POST",
+        body: JSON.stringify({ provider, model }),
+      });
+      setTested(`Połączenie działa · ${r.ms} ms`);
+    } catch (e) {
+      setError(
+        e instanceof Error ? e.message : "Nie udało się połączyć z modelem.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function clear() {
+    if (
+      !confirm(
+        "Rozpocząć nową rozmowę? Oczekujące propozycje zostaną odrzucone.",
+      )
+    )
+      return;
+    setBusy(true);
+    try {
+      const r = await localRequest(wid, "ai/clear", {
+        method: "POST",
+        body: "{}",
+      });
+      setMessages(r.messages);
+      setNotice("Rozpoczęto nową rozmowę.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Nie udało się wyczyścić.");
+    } finally {
+      setBusy(false);
+    }
+  }
   async function fetchModels() {
     setBusy(true);
     setError("");
@@ -177,6 +272,7 @@ export default function AiAgent({
     setProvider(p);
     setModel(p === "builtin" ? BUILTIN_MODEL : "");
     setNotice("");
+    setTested("");
   };
   return (
     <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5">
@@ -195,9 +291,29 @@ export default function AiAgent({
                 Zapytaj. Sprawdź. Zdecyduj.
               </h2>
               <p className="text-sm text-violet-100/90">
-                Agent zna CRM, zadania, marketing i Company Brain. Każdą zmianę
-                zatwierdzasz osobno.
+                Agent zna CRM, Lead Hub, kampanie, analitykę, płatności i
+                Company Brain. Każdą zmianę zatwierdzasz osobno.
               </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-violet-700 shadow transition hover:bg-violet-50 disabled:opacity-60"
+                  disabled={
+                    busy || storageBusy || !available(provider) || !model
+                  }
+                  onClick={() => void send(FULL_ANALYSIS, provider, model)}
+                >
+                  Pełna analiza firmy
+                </button>
+                <button
+                  type="button"
+                  className="rounded-xl border border-white/25 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/20 disabled:opacity-60"
+                  disabled={busy || !messages.length}
+                  onClick={() => void clear()}
+                >
+                  Nowa rozmowa
+                </button>
+              </div>
             </div>
           </div>
           <dl className="flex gap-6">
@@ -324,6 +440,29 @@ export default function AiAgent({
               </datalist>
             </>
           )}
+          {provider !== "builtin" && (
+            <div className="grid gap-2">
+              <ol className="grid list-decimal gap-1 pl-5 text-xs leading-relaxed text-slate-600">
+                {steps[provider].map((step) => (
+                  <li key={step}>{step}</li>
+                ))}
+              </ol>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  className="crm-button secondary"
+                  disabled={busy || !available(provider) || !model}
+                  onClick={() => void testEngine()}
+                >
+                  Sprawdź połączenie
+                </button>
+                {tested && (
+                  <span className="text-xs font-semibold text-emerald-700">
+                    {tested}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
           {provider === "openrouter" && (
             <div className="grid gap-3">
               <Field label="Klucz OpenRouter (sesja 30 minut)">
@@ -379,6 +518,22 @@ export default function AiAgent({
               ponownie. Adapter działa bez narzędzi systemowych i MCP.
             </p>
           )}
+          <div className="grid gap-2 border-t border-slate-100 pt-4">
+            <h4 className="text-sm font-bold text-slate-800">Co widzi agent</h4>
+            <ul className="grid gap-1.5">
+              {sources.map((src) => (
+                <li key={src.id} className="flex items-start gap-2 text-xs">
+                  <span
+                    className={`mt-1 size-2 shrink-0 rounded-full ${src.available ? "bg-emerald-500" : "bg-slate-300"}`}
+                  />
+                  <span className="min-w-0">
+                    <strong className="text-slate-700">{src.label}</strong>
+                    <span className="text-slate-500"> · {src.detail}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
           <p className="crm-muted text-xs leading-relaxed">
             {provider === "builtin"
               ? "Wbudowany agent liczy wyłącznie na danych tej przestrzeni i nie wysyła ich poza komputer."

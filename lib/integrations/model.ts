@@ -4,6 +4,8 @@ export const PROVIDERS = [
   "ga4",
   "search_console",
   "stripe",
+  "meta_ads",
+  "plausible",
 ] as const;
 export type Provider = (typeof PROVIDERS)[number];
 export const providerLabels: Record<Provider, string> = {
@@ -12,6 +14,8 @@ export const providerLabels: Record<Provider, string> = {
   ga4: "Google Analytics 4",
   search_console: "Google Search Console",
   stripe: "Stripe",
+  meta_ads: "Meta Ads",
+  plausible: "Plausible Analytics",
 };
 export type PaymentsReport = {
   currency: string;
@@ -29,9 +33,22 @@ export type PaymentsReport = {
   truncated: boolean;
 };
 export type GoogleProvider = "ga4" | "search_console";
-export type Resource = { propertyId?: string; siteUrl?: string };
+export type ResourceProvider = GoogleProvider | "meta_ads" | "plausible";
+export const RESOURCE_PROVIDERS: ResourceProvider[] = [
+  "ga4",
+  "search_console",
+  "meta_ads",
+  "plausible",
+];
+export type Resource = {
+  propertyId?: string;
+  siteUrl?: string;
+  adAccountId?: string;
+  siteId?: string;
+};
+export type ReportProvider = GoogleProvider | "plausible";
 export type GoogleReport = {
-  provider: GoogleProvider;
+  provider: ReportProvider;
   resource: string;
   from: string;
   to: string;
@@ -48,15 +65,41 @@ export type IntegrationResult = {
   events?: unknown[][];
   report?: GoogleReport;
   payments?: PaymentsReport;
+  campaigns?: import("./marketing").CampaignDay[];
+  currency?: string;
   synced_at?: string;
 };
 export function validateResource(
-  provider: GoogleProvider,
+  provider: ResourceProvider,
   value: unknown,
 ): Resource {
   if (!value || typeof value !== "object" || Array.isArray(value))
-    throw Error("Podaj usługę Google.");
+    throw Error("Podaj usługę do odczytu.");
   const v = value as Record<string, unknown>;
+  if (provider === "meta_ads") {
+    const id =
+      typeof v.adAccountId === "string"
+        ? v.adAccountId.trim().replace(/^act_/, "")
+        : "";
+    if (!/^[1-9][0-9]{4,19}$/.test(id))
+      throw Error(
+        "Podaj identyfikator konta reklamowego Meta, np. act_1234567890 lub 1234567890.",
+      );
+    return { adAccountId: `act_${id}` };
+  }
+  if (provider === "plausible") {
+    const site =
+      typeof v.siteId === "string"
+        ? v.siteId
+            .trim()
+            .toLowerCase()
+            .replace(/^https?:\/\//, "")
+            .replace(/\/$/, "")
+        : "";
+    if (!/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(site))
+      throw Error("Podaj domenę witryny z Plausible, np. twoja-firma.pl.");
+    return { siteId: site };
+  }
   if (provider === "ga4") {
     if (
       typeof v.propertyId !== "string" ||

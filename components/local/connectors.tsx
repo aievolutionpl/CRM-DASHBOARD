@@ -11,6 +11,8 @@ import {
   type Resource,
   type GoogleReport,
   type PaymentsReport,
+  type ResourceProvider,
+  RESOURCE_PROVIDERS,
 } from "@/lib/integrations/model";
 import { Badge } from "../crm/ui";
 import {
@@ -351,9 +353,13 @@ export default function Connectors({
                       ? "Odczyt liczby zdarzeń z ostatnich 30 dni z PostHog Cloud EU/US. Bez tworzenia własnego session replay."
                       : c.provider === "stripe"
                         ? "Płatności, zwroty i saldo z ostatnich 30 dni. Klucz ograniczony tylko do odczytu; bez tworzenia płatności i zmian w koncie."
-                        : c.provider === "ga4"
-                          ? "Sesje, użytkownicy, odsłony, kluczowe zdarzenia i przychód z usługi GA4. Zapisany raport pokaże się też na Pulpicie."
-                          : "Kliknięcia, wyświetlenia, CTR, średnia pozycja oraz zapytania z wyszukiwarki Google. Zapisany raport pokaże się też na Pulpicie."}
+                        : c.provider === "meta_ads"
+                          ? "Wydatki, wyświetlenia, kliknięcia, leady i wartość zakupów z kampanii Facebook i Instagram (30 dni). Wyniki trafiają do Pulpitu obok Google Ads."
+                          : c.provider === "plausible"
+                            ? "Odwiedzający, wizyty, odsłony, współczynnik odrzuceń i źródła ruchu z Plausible (30 dni). Analityka bez cookies, zgodna z RODO."
+                            : c.provider === "ga4"
+                              ? "Sesje, użytkownicy, odsłony, kluczowe zdarzenia i przychód z usługi GA4. Zapisany raport pokaże się też na Pulpicie."
+                              : "Kliknięcia, wyświetlenia, CTR, średnia pozycja oraz zapytania z wyszukiwarki Google. Zapisany raport pokaże się też na Pulpicie."}
                 </p>
                 <details>
                   <summary className="cursor-pointer text-sm text-violet-700">
@@ -391,16 +397,22 @@ export default function Connectors({
                     do notatek ani CSV.
                   </p>
                 </details>
-                {(c.provider === "ga4" || c.provider === "search_console") && (
+                {RESOURCE_PROVIDERS.includes(
+                  c.provider as ResourceProvider,
+                ) && (
                   <>
                     <p className="crm-muted">
-                      {c.authConfigured
-                        ? "Uwierzytelnienie Google jest skonfigurowane; dostęp potwierdzi dopiero odczyt API."
-                        : "Najpierw skonfiguruj konto usługi Google lub OAuth w .env.local. Szczegóły znajdziesz w instrukcji podłączenia."}
+                      {c.provider === "meta_ads" || c.provider === "plausible"
+                        ? c.authConfigured
+                          ? "Klucz API jest skonfigurowany; dostęp potwierdzi dopiero odczyt."
+                          : "Najpierw dodaj klucz w .env.local i zrestartuj serwer."
+                        : c.authConfigured
+                          ? "Uwierzytelnienie Google jest skonfigurowane; dostęp potwierdzi dopiero odczyt API."
+                          : "Najpierw skonfiguruj konto usługi Google lub OAuth w .env.local. Szczegóły znajdziesz w instrukcji podłączenia."}
                     </p>
                     <GoogleSetup
                       key={`${wid}:${c.provider}:${JSON.stringify(c.resource)}`}
-                      provider={c.provider}
+                      provider={c.provider as ResourceProvider}
                       resource={c.resource || {}}
                       busy={!!busy}
                       save={(resource) =>
@@ -443,7 +455,9 @@ export default function Connectors({
                         ? "Odczytaj zdarzenia"
                         : c.provider === "stripe"
                           ? "Pobierz płatności"
-                          : "Pobierz statystyki"}
+                          : c.provider === "meta_ads"
+                            ? "Pobierz kampanie"
+                            : "Pobierz statystyki"}
                   </button>
                   {s && !disconnected && (
                     <button
@@ -475,7 +489,7 @@ export default function Connectors({
             <p className="text-sm">
               Kolumny: date, source, campaign, spend, impressions, clicks,
               leads, qualified, revenue. Źródła: google_ads, microsoft_ads,
-              organic, gbp, direct.
+              meta_ads, organic, gbp, direct.
             </p>
             <div className="flex flex-wrap gap-2">
               <button

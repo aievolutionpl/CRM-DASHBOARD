@@ -9,6 +9,8 @@ import {
 } from "./model";
 import { apiJson } from "./http";
 import { readStripe, stripeConfigured } from "./stripe";
+import { readMeta, metaConfigured } from "./meta";
+import { readPlausible, plausibleConfigured } from "./plausible";
 export type { Provider } from "./model";
 export function providerConfig(provider: Provider, resource: Resource = {}) {
   if (provider === "ga4" || provider === "search_console")
@@ -24,6 +26,27 @@ export function providerConfig(provider: Provider, resource: Resource = {}) {
         provider === "ga4"
           ? "Identyfikator usługi GA4 w panelu poniżej"
           : "Usługa Search Console w panelu poniżej",
+      ],
+    };
+  if (provider === "meta_ads")
+    return {
+      configured: metaConfigured() && Boolean(resource.adAccountId),
+      authConfigured: metaConfigured(),
+      resource,
+      required: [
+        "META_ACCESS_TOKEN (token użytkownika systemowego z uprawnieniem ads_read)",
+        "Identyfikator konta reklamowego act_… w panelu poniżej",
+      ],
+    };
+  if (provider === "plausible")
+    return {
+      configured: plausibleConfigured() && Boolean(resource.siteId),
+      authConfigured: plausibleConfigured(),
+      resource,
+      required: [
+        "PLAUSIBLE_API_KEY (klucz Stats API)",
+        "PLAUSIBLE_HOST (opcjonalnie, dla wersji self-hosted)",
+        "Domena witryny w panelu poniżej",
       ],
     };
   if (provider === "stripe")
@@ -84,6 +107,10 @@ export function adapter(
   if (provider === "ga4" || provider === "search_console")
     return { provider, read: () => readGoogle(provider, resource) };
   if (provider === "stripe") return { provider, read: readStripe };
+  if (provider === "meta_ads")
+    return { provider, read: () => readMeta(resource) };
+  if (provider === "plausible")
+    return { provider, read: () => readPlausible(resource) };
   if (provider === "wordpress")
     return {
       provider,

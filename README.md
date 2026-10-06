@@ -10,11 +10,13 @@ Evolution Growth OS to narzędzie dla lokalnych firm usługowych, małych zespo�
 
 **Przykład:** klient trafia z reklamy, zostawia formularz i dzwoni. W Lead Hub zapisujesz te kontakty przy jednej osobie, dodajesz ofertę, rezerwację, wykonanie pracy i wpłatę. W Company Brain zbierasz ofertę i zasady komunikacji marki. AI Brain pomaga analizować kontekst oraz proponuje zadania i notatki, które zatwierdzasz przed wykonaniem.
 
-Jasny interfejs ze szkłem i miękkimi gradientami, widok mobilny, kwoty w PLN, walidacja NIP oraz polskie daty. **AI Evolution Polska · wersja 0.6.0.** Zalecana edycja lokalna zapisuje dane w SQLite i nie wymaga konta Supabase. Podłączenie AI jest opcjonalne.
+Jasny interfejs ze szkłem i miękkimi gradientami, widok mobilny, kwoty w PLN, walidacja NIP oraz polskie daty. **AI Evolution Polska · wersja 0.7.0.** Zalecana edycja lokalna zapisuje dane w SQLite i nie wymaga konta Supabase. Podłączenie AI jest opcjonalne.
 
 ![Centrum dowodzenia Evolution Growth OS](docs/screenshots/command-center.png)
 
-**Nowość w 0.6:** Centrum dowodzenia z kondycją firmy i rekomendacjami AI, wbudowany **Evolution Agent** działający bez klucza API, katalog konektorów premium i odczyt płatności **Stripe**. Plan i szczegóły: [docs/PRODUCT-POLISH.md](docs/PRODUCT-POLISH.md).
+**Nowość w 0.7:** konektory **Meta Ads** i **Plausible**, uporządkowane menu boczne, rozbudowane zarządzanie firmami (statusy, opiekun, tagi, karta firmy z zakładkami, akcje zbiorcze) oraz agent AI, który analizuje wszystkie statystyki i rozmawia przez OpenRouter, ChatGPT (Codex CLI) lub Claude Code.
+
+**0.6:** Centrum dowodzenia z kondycją firmy i rekomendacjami AI, wbudowany **Evolution Agent** działający bez klucza API, katalog konektorów premium i odczyt płatności **Stripe**. Plan i szczegóły: [docs/PRODUCT-POLISH.md](docs/PRODUCT-POLISH.md).
 
 ![Pulpit Evolution Growth OS z wynikami kampanii DEMO](docs/screenshots/local-dashboard.png)
 

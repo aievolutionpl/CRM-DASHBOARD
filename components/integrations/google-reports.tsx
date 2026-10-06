@@ -18,8 +18,17 @@ const labels: Record<string, string> = {
   impressions: "Wyświetlenia",
   ctr: "CTR",
   position: "Średnia pozycja",
+  visitors: "Unikalni odwiedzający",
+  visits: "Wizyty",
+  pageviews: "Odsłony",
+  bounce_rate: "Współczynnik odrzuceń",
+  visit_duration: "Średni czas wizyty",
 };
 function value(metric: string, number: number, currency?: string) {
+  if (metric === "bounce_rate")
+    return `${new Intl.NumberFormat("pl-PL", { maximumFractionDigits: 1 }).format(number)}%`;
+  if (metric === "visit_duration")
+    return `${Math.floor(number / 60)} min ${Math.round(number % 60)} s`;
   if (metric === "ctr")
     return new Intl.NumberFormat("pl-PL", {
       style: "percent",
@@ -50,22 +59,28 @@ export function GoogleReportView({
   report: GoogleReport;
   stale?: boolean;
 }) {
+  const plausible = report.provider === "plausible";
   const [metric, setMetric] = useState(
-    report.provider === "ga4" ? "sessions" : "clicks",
+    plausible ? "visitors" : report.provider === "ga4" ? "sessions" : "clicks",
   );
-  const metrics =
-    report.provider === "ga4"
+  const metrics = plausible
+    ? ["visitors", "pageviews"]
+    : report.provider === "ga4"
       ? ["sessions", "screenPageViews", "keyEvents"]
       : ["clicks", "impressions"];
-  const breakdown =
-    report.provider === "ga4"
+  const breakdown = plausible
+    ? ["visitors", "visits"]
+    : report.provider === "ga4"
       ? ["sessions", "keyEvents", "totalRevenue"]
       : ["clicks", "impressions", "ctr", "position"];
   return (
     <section className="crm-card grid min-w-0 gap-5 p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <span className="crm-eyebrow">ODCZYT API GOOGLE · ZAPIS LOKALNY</span>
+          <span className="crm-eyebrow">
+            {plausible ? "ODCZYT API PLAUSIBLE" : "ODCZYT API GOOGLE"} · ZAPIS
+            LOKALNY
+          </span>
           <h3 className="text-xl!">{providerLabels[report.provider]}</h3>
           <p className="crm-muted break-all">
             {report.resource} · {report.from} – {report.to}
@@ -120,9 +135,11 @@ export function GoogleReportView({
       />
       <details>
         <summary className="cursor-pointer text-sm font-medium text-violet-700">
-          {report.provider === "ga4"
-            ? "Kanały pozyskania sesji"
-            : "Zapytania w Google — do 20 pozycji"}
+          {plausible
+            ? "Źródła ruchu — do 20 pozycji"
+            : report.provider === "ga4"
+              ? "Kanały pozyskania sesji"
+              : "Zapytania w Google — do 20 pozycji"}
         </summary>
         <div className="mt-4 grid gap-3">
           {report.breakdown.length ? (
@@ -146,7 +163,7 @@ export function GoogleReportView({
             ))
           ) : (
             <p className="crm-muted">
-              Google nie zwróciło wierszy dla tego zakresu.
+              Dostawca nie zwrócił wierszy dla tego zakresu.
             </p>
           )}
         </div>
@@ -162,8 +179,8 @@ export function GoogleReportView({
             </li>
           ))}
           <li className="list-disc">
-            Metryki Google są osobnym źródłem; nie są dodawane do leadów lub
-            przychodu z CSV ani do wpłat Lead Hub.
+            Metryki analityczne są osobnym źródłem; nie są dodawane do leadów
+            lub przychodu z CSV ani do wpłat Lead Hub.
           </li>
         </ul>
       </details>
