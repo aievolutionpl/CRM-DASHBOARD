@@ -14,7 +14,7 @@ import {
 } from "@/lib/growth/model";
 import { downloadFile } from "@/lib/crm/backup";
 import { emptyAutomation } from "@/lib/automation/model";
-import { Field } from "../crm/ui";
+import { Field, Icon } from "../crm/ui";
 export default function CloudWorkspace({ user }: { user: User }) {
   const selectionKey = `growth-os-space:${isSqlite() ? "sqlite" : "cloud"}:${user.id}`;
   const savedLabel = isSqlite() ? "Zapisano w SQLite" : "Zapisano w Supabase";
@@ -250,14 +250,19 @@ export default function CloudWorkspace({ user }: { user: User }) {
     }
   }
   return (
-    <div className="crm flex-col [&_.crm-main]:ml-0! [&_.crm-sidebar]:sticky! [&_.crm-sidebar]:top-0 [&_.crm-sidebar]:h-screen [&_.crm-sidebar]:self-start">
-      <header className="flex flex-wrap items-center gap-3 border-b border-slate-200 bg-white p-4">
-        <strong>Evolution Growth OS {isSqlite() && "· lokalnie"}</strong>
-        <label className="flex items-center gap-2">
+    <div className="crm flex-col [&_.crm-main]:ml-0! [&_.crm-sidebar]:sticky! [&_.crm-sidebar]:top-0 [&_.crm-sidebar]:h-dvh [&_.crm-sidebar]:self-start">
+      <header className="relative z-30 flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-white/80 bg-white/85 px-4 py-2.5 shadow-[0_6px_20px_-18px_#41367a] backdrop-blur-xl sm:px-6">
+        <strong className="flex items-center gap-2 text-sm text-slate-800">
+          <span className="grid size-7 place-items-center rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 text-[11px] font-extrabold text-white">
+            EG
+          </span>
+          Evolution Growth OS {isSqlite() && "· lokalnie"}
+        </strong>
+        <label className="flex items-center gap-2 text-xs font-medium text-slate-500">
           Przestrzeń
           <select
             aria-label="Przestrzeń robocza"
-            className="max-w-[18em] rounded-lg border border-slate-200 p-2"
+            className="max-w-[16em] rounded-xl! border border-slate-200 px-3! py-1.5! text-sm font-semibold text-slate-800"
             value={selected?.id ?? ""}
             disabled={pending || loading}
             onChange={(e) =>
@@ -272,57 +277,72 @@ export default function CloudWorkspace({ user }: { user: User }) {
             ))}
           </select>
         </label>
-        <span role="status" className="crm-muted">
+        <span
+          role="status"
+          className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700"
+        >
           {sync}
         </span>
-        {selected && <span className="crm-muted">Rola: {selected.role}</span>}
-        <button
-          className="crm-button secondary"
-          disabled={!selected || pending || loading || isSqlite()}
-          onClick={() => setMembers(true)}
-        >
-          Zespół
-        </button>
-        <button
-          className="crm-button secondary"
-          disabled={pending || loading}
-          onClick={() => void signOut()}
-          hidden={isSqlite()}
-        >
-          Wyloguj
-        </button>
-        <details className="w-full" open={createOpen}>
-          <summary
-            aria-disabled={!spacesReady}
-            onClick={(e) => {
-              e.preventDefault();
-              if (spacesReady) setCreateOpen((value) => !value);
-            }}
-          >
-            {isSqlite()
-              ? "Nowa przestrzeń firmy"
-              : "Moje konto · nowa przestrzeń"}
-          </summary>
-          <p className="crm-muted my-3 break-all">
-            {user.email} · UUID: {user.id}
-          </p>
-          <form onSubmit={create} className="flex flex-wrap items-end gap-3">
-            <Field label="Nazwa nowej przestrzeni">
-              <input
-                name="name"
-                required
-                maxLength={120}
-                placeholder="Nazwa Twojej firmy"
-              />
-            </Field>
+        {selected && (
+          <span className="rounded-full bg-violet-50 px-2.5 py-1 text-[11px] font-semibold text-violet-700">
+            Rola: {selected.role}
+          </span>
+        )}
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          {!isSqlite() && (
             <button
-              className="crm-button"
-              disabled={!spacesReady || loading || pending}
+              className="crm-button secondary"
+              disabled={!selected || pending || loading}
+              onClick={() => setMembers(true)}
             >
-              Utwórz przestrzeń
+              Zespół
             </button>
-          </form>
-        </details>
+          )}
+          <button
+            className="crm-button secondary"
+            disabled={pending || loading}
+            onClick={() => void signOut()}
+            hidden={isSqlite()}
+          >
+            Wyloguj
+          </button>
+          <details className="relative" open={createOpen}>
+            <summary
+              aria-disabled={!spacesReady}
+              className="flex cursor-pointer list-none items-center gap-1.5 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 px-3 py-2 text-xs font-semibold text-white shadow-sm [&::-webkit-details-marker]:hidden"
+              onClick={(e) => {
+                e.preventDefault();
+                if (spacesReady) setCreateOpen((value) => !value);
+              }}
+            >
+              <Icon name="plus" size={14} />
+              {isSqlite()
+                ? "Nowa przestrzeń firmy"
+                : "Moje konto · nowa przestrzeń"}
+            </summary>
+            <div className="absolute top-full right-0 z-40 mt-2 w-[min(92vw,420px)] rounded-2xl border border-slate-100 bg-white p-4 shadow-[0_24px_60px_-20px_#41367a66]">
+              <p className="crm-muted mb-3 text-xs break-all">
+                {user.email} · UUID: {user.id}
+              </p>
+              <form onSubmit={create} className="grid gap-3">
+                <Field label="Nazwa nowej przestrzeni">
+                  <input
+                    name="name"
+                    required
+                    maxLength={120}
+                    placeholder="Nazwa Twojej firmy"
+                  />
+                </Field>
+                <button
+                  className="crm-button justify-self-start"
+                  disabled={!spacesReady || loading || pending}
+                >
+                  Utwórz przestrzeń
+                </button>
+              </form>
+            </div>
+          </details>
+        </div>
       </header>
       {error && (
         <div className="p-4">

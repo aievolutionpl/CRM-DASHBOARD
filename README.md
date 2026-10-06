@@ -18,6 +18,8 @@ Jasny interfejs ze szkłem i miękkimi gradientami, widok mobilny, kwoty w PLN, 
 
 ![Pulpit 0.8 — statystyki, harmonogram i raporty](docs/screenshots/dashboard-stats.png)
 
+**Także w 0.8:** konektory **Meta Ads** i **Plausible**, uporządkowane menu boczne, rozbudowane zarządzanie firmami (statusy, opiekun, tagi, karta firmy z zakładkami, akcje zbiorcze) oraz agent AI, który analizuje wszystkie statystyki i rozmawia przez OpenRouter, ChatGPT (Codex CLI) lub Claude Code.
+
 **W 0.7:** logowanie Google, wybór usług i statystyki Ads bez CSV. Aplikacja zawiera również Centrum dowodzenia, wbudowanego **Evolution Agenta** bez klucza API, katalog konektorów i odczyt płatności **Stripe**. Plan i szczegóły: [docs/PRODUCT-POLISH.md](docs/PRODUCT-POLISH.md).
 
 ![Pulpit Evolution Growth OS z wynikami kampanii DEMO](docs/screenshots/local-dashboard.png)

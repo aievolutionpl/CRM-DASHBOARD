@@ -9,6 +9,9 @@ import {
   validEmail,
   validNip,
   safeWebsite,
+  FIRM_STATUSES,
+  firmStatusLabels,
+  type FirmStatus,
   type Firm,
   type Contact,
   type Deal,
@@ -53,6 +56,10 @@ export default function EntityForm({
           email: "",
           phone: "",
           address: "",
+          status: "lead",
+          owner: "",
+          source: "",
+          tags: "",
         };
       case "contact":
         return {
@@ -155,6 +162,19 @@ export default function EntityForm({
         website: safeWebsite(text("website")),
         notes: text("notes"),
         created: (initial as Firm)?.created ?? today(),
+        status: (FIRM_STATUSES as readonly string[]).includes(text("status"))
+          ? (text("status") as FirmStatus)
+          : "lead",
+        owner: text("owner").trim(),
+        source: text("source").trim(),
+        tags: [
+          ...new Set(
+            text("tags")
+              .split(",")
+              .map((t) => t.trim().slice(0, 40))
+              .filter(Boolean),
+          ),
+        ].slice(0, 12),
       });
     }
     if (editor.kind === "contact") {
@@ -228,14 +248,22 @@ export default function EntityForm({
           onChange={(e) => change("industry", e.target.value)}
         >
           {[
-            "Usługi",
-            "Marketing",
-            "E-commerce",
-            "Logistyka",
-            "Edukacja",
-            "Technologia",
-            "Produkcja",
-            "Inna",
+            ...new Set([
+              "Usługi",
+              "Marketing",
+              "E-commerce",
+              "Logistyka",
+              "Edukacja",
+              "Technologia",
+              "Produkcja",
+              "Finanse",
+              "Nieruchomości",
+              "Zdrowie i uroda",
+              "Gastronomia",
+              "Budownictwo",
+              "Inna",
+              ...(text("industry") ? [text("industry")] : []),
+            ]),
           ].map((v) => (
             <option key={v}>{v}</option>
           ))}
@@ -244,6 +272,52 @@ export default function EntityForm({
       <Field label="Strona internetowa">
         {input("website", "text", false, 500)}
       </Field>
+    </>
+  );
+  const relationFields = (
+    <>
+      <div className="crm-form-grid">
+        <Field label="Status relacji">
+          <select
+            value={text("status") || "lead"}
+            onChange={(e) => change("status", e.target.value)}
+          >
+            {FIRM_STATUSES.map((v) => (
+              <option key={v} value={v}>
+                {firmStatusLabels[v]}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Opiekun">{input("owner", "text", false, 100)}</Field>
+      </div>
+      <div className="crm-form-grid">
+        <Field label="Źródło pozyskania">
+          <input
+            list="crm-firm-sources"
+            value={text("source")}
+            maxLength={100}
+            onChange={(e) => change("source", e.target.value)}
+          />
+        </Field>
+        <Field label="Tagi" hint="Oddziel przecinkami, np. B2B, polecenie">
+          {input("tags", "text", false, 400)}
+        </Field>
+      </div>
+      <datalist id="crm-firm-sources">
+        {[
+          "Polecenie",
+          "Google Ads",
+          "Meta Ads",
+          "Strona www",
+          "LinkedIn",
+          "Targi / wydarzenie",
+          "Cold mailing",
+          "Telefon",
+        ].map((v) => (
+          <option key={v} value={v} />
+        ))}
+      </datalist>
     </>
   );
   const title = `${initial ? "Edytuj" : "Dodaj"} ${{ firm: serviceMode ? "klienta" : "firmę", contact: "kontakt", deal: "szansę sprzedaży", task: "zadanie" }[editor.kind]}`;
@@ -287,6 +361,7 @@ export default function EntityForm({
             ) : (
               companyFields
             )}
+            {relationFields}
             <Field label="Notatki">
               <textarea
                 value={text("notes")}

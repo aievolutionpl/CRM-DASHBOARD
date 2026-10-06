@@ -9,17 +9,11 @@ import LocalUnavailable from "../local/unavailable";
 import Image from "next/image";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useCrm } from "@/stores/crm-store";
-import { type Section, type Contact, type Mail } from "@/lib/crm/model";
+import { today, type Section, type Contact, type Mail } from "@/lib/crm/model";
 import { Icon, Modal } from "./ui";
 import EntityForm, { type Editor } from "./forms";
-import {
-  Dashboard,
-  Firms,
-  Deals,
-  Contacts,
-  Tasks,
-  type ViewProps,
-} from "./views";
+import Firms from "./firms";
+import { Dashboard, Deals, Contacts, Tasks, type ViewProps } from "./views";
 import { Mailbox, Composer, Agent, type MailStatus } from "./mail";
 import Settings from "./settings";
 import ServiceDashboard from "../services/dashboard";
@@ -155,6 +149,26 @@ export default function Workspace({
   } | null>(null);
   const [query, setQuery] = useState("");
   const [navOpen, setNavOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState<string[]>(() => {
+    try {
+      const v = JSON.parse(
+        localStorage.getItem("evolution-nav-collapsed") || "[]",
+      );
+      return Array.isArray(v) ? v.filter((x) => typeof x === "string") : [];
+    } catch {
+      return [];
+    }
+  });
+  const toggleGroup = (id: string) =>
+    setCollapsed((list) => {
+      const next = list.includes(id)
+        ? list.filter((x) => x !== id)
+        : [...list, id];
+      try {
+        localStorage.setItem("evolution-nav-collapsed", JSON.stringify(next));
+      } catch {}
+      return next;
+    });
   const [editor, setEditor] = useState<Editor | null>(null);
   const [composer, setComposer] = useState<{
     contact?: Contact;
@@ -267,16 +281,90 @@ export default function Workspace({
     notify,
     navigate,
     compose,
+    ask: askAgent,
   };
   const current = navigation.find((n) => n.id === section)!;
+  const overdue = s.tasks.filter((t) => !t.done && t.date < today()).length;
+  const badges: Partial<Record<Section, { text: string; tone?: string }>> = {
+    companies: { text: String(s.firms.length) },
+    deals: {
+      text: String(
+        s.deals.filter((d) =>
+          d.service
+            ? ["booked", "in_progress"].includes(d.service.status)
+            : !["Wygrana", "Przegrana"].includes(d.stage),
+        ).length,
+      ),
+    },
+    contacts: { text: String(s.contacts.length) },
+    tasks: overdue
+      ? { text: String(overdue), tone: "alert" }
+      : { text: String(s.tasks.filter((t) => !t.done).length) },
+    ai: { text: "AI", tone: "ai" },
+    ...(s.automation.jobs.some((j) => j.enabled)
+      ? {
+          automations: {
+            text: String(s.automation.jobs.filter((j) => j.enabled).length),
+          },
+        }
+      : {}),
+    agent: { text: "AGENT", tone: "mini" },
+  };
+  const groups: { id: string; label: string; items: Section[] }[] = [
+    { id: "start", label: "START", items: ["dashboard", "leads"] },
+    {
+      id: "sales",
+      label: serviceMode ? "KLIENCI I REALIZACJE" : "SPRZEDAŻ",
+      items: ["companies", "deals", "contacts", "tasks"],
+    },
+    {
+      id: "ai",
+      label: "AI I AUTOMATYZACJA",
+      items: ["ai", "automations", "reports", "agent", "mail"],
+    },
+    { id: "data", label: "DANE I WIEDZA", items: ["connectors", "brain"] },
+  ];
+  const icons: Partial<Record<Section, string>> = {
+    leads: "target",
+    ai: "sparkles",
+    agent: "message",
+    brain: "brain",
+    connectors: "plug",
+    automations: "clock",
+    reports: "file",
+  };
+  const navButton = (id: Section) => {
+    const n = navigation.find((x) => x.id === id)!;
+    const badge = badges[id];
+    return (
+      <button
+        key={id}
+        aria-label={n.title}
+        className={`crm-nav-item ${section === id ? "active" : ""}`}
+        onClick={() => navigate(id)}
+        aria-current={section === id ? "page" : undefined}
+      >
+        <Icon name={icons[id] ?? id} />
+        <span>{n.title}</span>
+        {badge &&
+          (badge.tone === "mini" ? (
+            <span className="crm-mini-badge">{badge.text}</span>
+          ) : (
+            <small className={badge.tone ? `crm-nav-${badge.tone}` : ""}>
+              {badge.text}
+            </small>
+          ))}
+      </button>
+    );
+  };
   const nav = (
     <>
       <div className="crm-brand">
         <Image
           src="/assets/brand/evolution-mark.png"
           alt=""
-          width={44}
-          height={44}
+          width={40}
+          height={40}
         />
         <div>
           <strong>
@@ -287,121 +375,67 @@ export default function Workspace({
           <small>AI EVOLUTION POLSKA</small>
         </div>
       </div>
-      <div className="crm-workspace-label">
-        <span className="crm-workspace-dot" />
-        {cloud?.name || "Mój obszar pracy"}
-        <Icon name="check" size={13} />
+      <div className="crm-workspace-card">
+        <div className="crm-workspace-label">
+          <span className="crm-workspace-dot" />
+          <span className="min-w-0 flex-1 truncate">
+            {cloud?.name || "Mój obszar pracy"}
+          </span>
+          <Icon name="check" size={13} />
+        </div>
+        <label className="growth-mode-switch">
+          Sposób pracy
+          <select
+            aria-label="Tryb pracy"
+            value={s.businessMode}
+            disabled={readOnly || storageBusy}
+            onChange={(e) => {
+              s.setBusinessMode(e.target.value as "crm" | "services");
+              navigate("dashboard");
+            }}
+          >
+            <option value="crm">CRM · sprzedaż B2B</option>
+            <option value="services">Firma usługowa</option>
+          </select>
+        </label>
       </div>
-      <label className="growth-mode-switch">
-        Sposób pracy
-        <select
-          aria-label="Tryb pracy"
-          value={s.businessMode}
-          disabled={readOnly || storageBusy}
-          onChange={(e) => {
-            s.setBusinessMode(e.target.value as "crm" | "services");
-            navigate("dashboard");
-          }}
-        >
-          <option value="crm">CRM · sprzedaż B2B</option>
-          <option value="services">Firma usługowa</option>
-        </select>
-      </label>
-      <div className="crm-nav-caption">
-        {serviceMode ? "KLIENCI I REALIZACJE" : "PRZESTRZEŃ SPRZEDAŻY"}
-      </div>
-      <nav aria-label="Menu główne">
-        {navigation
-          .filter((n) =>
-            [
-              "dashboard",
-              "leads",
-              "companies",
-              "deals",
-              "contacts",
-              "tasks",
-            ].includes(n.id),
-          )
-          .map((n) => (
-            <button
-              key={n.id}
-              aria-label={n.title}
-              className={`crm-nav-item ${section === n.id ? "active" : ""}`}
-              onClick={() => navigate(n.id)}
-              aria-current={section === n.id ? "page" : undefined}
-            >
-              <Icon name={n.id === "leads" ? "contacts" : n.id} />
-              <span>{n.title}</span>
-              {n.id === "companies" && <small>{s.firms.length}</small>}
-              {n.id === "tasks" && (
-                <small>{s.tasks.filter((t) => !t.done).length}</small>
-              )}
-            </button>
-          ))}
-        <div className="crm-nav-caption">KOMUNIKACJA I AUTOMATYZACJA</div>
-        {navigation
-          .filter((n) =>
-            ["ai", "mail", "agent", "automations", "reports"].includes(n.id),
-          )
-          .map((n) => (
-            <button
-              key={n.id}
-              aria-label={n.title}
-              className={`crm-nav-item ${section === n.id ? "active" : ""}`}
-              onClick={() => navigate(n.id)}
-              aria-current={section === n.id ? "page" : undefined}
-            >
-              <Icon
-                name={
-                  n.id === "ai"
-                    ? "spark"
-                    : n.id === "automations"
-                      ? "clock"
-                      : n.id === "reports"
-                        ? "file"
-                        : n.id
-                }
-              />
-              <span>{n.title}</span>
-              {n.id === "ai" && <span className="crm-mini-badge">AI</span>}
-              {n.id === "automations" &&
-                s.automation.jobs.some((j) => j.enabled) && (
-                  <small>
-                    {s.automation.jobs.filter((j) => j.enabled).length}
-                  </small>
-                )}
-            </button>
-          ))}
-        <div className="crm-nav-caption">WIEDZA I DANE</div>
-        {navigation
-          .filter((n) => ["brain", "connectors"].includes(n.id))
-          .map((n) => (
-            <button
-              key={n.id}
-              aria-label={n.title}
-              className={`crm-nav-item ${section === n.id ? "active" : ""}`}
-              onClick={() => navigate(n.id)}
-            >
-              <Icon name={n.id === "brain" ? "companies" : "settings"} />
-              <span>{n.title}</span>
-            </button>
-          ))}
+      <nav aria-label="Menu główne" className="crm-nav">
+        {groups.map((g) => {
+          const open = !collapsed.includes(g.id);
+          return (
+            <div key={g.id} className="crm-nav-group">
+              <button
+                type="button"
+                className="crm-nav-caption"
+                aria-expanded={open}
+                onClick={() => toggleGroup(g.id)}
+              >
+                {g.label}
+                <Icon name="chevron" size={12} />
+              </button>
+              {open && g.items.map(navButton)}
+            </div>
+          );
+        })}
       </nav>
       <div className="crm-sidebar-bottom">
-        <div className="crm-sidebar-promo">
-          <Icon name="spark" />
-          <strong>Twój kolejny krok z AI</strong>
-          <p>
-            Uporządkuj relacje.
-            <br />
-            Daj sobie przestrzeń na rozwój.
-          </p>
-          <button className="crm-text-button" onClick={() => navigate("ai")}>
-            Otwórz agenta AI <Icon name="arrow" size={15} />
-          </button>
-        </div>
+        <button
+          type="button"
+          className="crm-sidebar-promo"
+          onClick={() => navigate("ai")}
+        >
+          <span className="crm-sidebar-promo-icon">
+            <Icon name="sparkles" size={18} />
+          </span>
+          <span>
+            <strong>Evolution Agent</strong>
+            <span>Analiza i plan działania</span>
+          </span>
+          <Icon name="arrow" size={15} />
+        </button>
         <button
           className={`crm-nav-item ${section === "settings" ? "active" : ""}`}
+          aria-label="Ustawienia"
           onClick={() => navigate("settings")}
         >
           <Icon name="settings" />

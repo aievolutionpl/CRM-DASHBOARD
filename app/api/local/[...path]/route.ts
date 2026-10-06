@@ -38,8 +38,15 @@ import {
   models,
   setSessionKey,
   clearSessionKey,
+  testConnection,
 } from "@/lib/ai/providers";
-import { ask, history, decide } from "@/lib/ai/service";
+import {
+  ask,
+  history,
+  decide,
+  clearConversation,
+  statsDigest,
+} from "@/lib/ai/service";
 import { AI_PROVIDERS, AGENT_PROVIDERS, validModel } from "@/lib/ai/model";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -193,7 +200,11 @@ async function handler(request: Request, context: Context) {
       case "ai":
         if (request.method === "GET") {
           if (path[3] === "models") return json({ models: await models(wid) });
-          return json({ status: await aiStatus(wid), messages: history(wid) });
+          return json({
+            status: await aiStatus(wid),
+            messages: history(wid),
+            sources: statsDigest(wid).sources,
+          });
         }
         if (request.method === "POST") {
           if (path[3] === "key" && typeof body.key === "string") {
@@ -203,6 +214,24 @@ async function handler(request: Request, context: Context) {
           if (path[3] === "disconnect") {
             clearSessionKey(wid);
             return json({ ok: true });
+          }
+          if (path[3] === "clear") {
+            clearConversation(wid);
+            return json({ messages: history(wid) });
+          }
+          if (path[3] === "test") {
+            if (
+              !AI_PROVIDERS.includes(body.provider as never) ||
+              !validModel(body.model)
+            )
+              return json({ error: "Wybierz dostawcę i model." }, 400);
+            return json(
+              await testConnection(
+                wid,
+                body.provider as "openrouter" | "codex" | "claude",
+                body.model,
+              ),
+            );
           }
           if (
             path[3] === "decision" &&

@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import type { GoogleProvider, Resource } from "@/lib/integrations/model";
+import type { ResourceProvider, Resource } from "@/lib/integrations/model";
 import { localRequest } from "@/lib/local/client";
 import { Field } from "../crm/ui";
 type Choice = { id: string; label: string; manager?: boolean };
@@ -12,7 +12,100 @@ export default function GoogleSetup({
   save,
 }: {
   wid: string;
-  provider: GoogleProvider;
+  provider: ResourceProvider;
+  resource: Resource;
+  busy: boolean;
+  save: (resource: Resource) => Promise<void>;
+}) {
+  if (provider === "meta_ads" || provider === "plausible")
+    return (
+      <KeySetup
+        provider={provider}
+        resource={resource}
+        busy={busy}
+        save={save}
+      />
+    );
+  return (
+    <GoogleResourceSetup
+      wid={wid}
+      provider={provider}
+      resource={resource}
+      busy={busy}
+      save={save}
+    />
+  );
+}
+const keyCopy = {
+  meta_ads: {
+    key: "adAccountId",
+    label: "Konto reklamowe Meta",
+    placeholder: "act_1234567890",
+    hint: "Identyfikator znajdziesz w Menedżerze reklam → Ustawienia konta. Token musi mieć uprawnienie ads_read do tego konta.",
+    button: "Meta Ads",
+    max: 30,
+  },
+  plausible: {
+    key: "siteId",
+    label: "Witryna w Plausible",
+    placeholder: "twoja-firma.pl",
+    hint: "Domena dokładnie taka jak w panelu Plausible (site_id).",
+    button: "Plausible",
+    max: 253,
+  },
+} as const;
+function KeySetup({
+  provider,
+  resource,
+  busy,
+  save,
+}: {
+  provider: "meta_ads" | "plausible";
+  resource: Resource;
+  busy: boolean;
+  save: (resource: Resource) => Promise<void>;
+}) {
+  const copy = keyCopy[provider];
+  const [value, setValue] = useState(resource[copy.key] || "");
+  return (
+    <form
+      className="grid gap-3"
+      onSubmit={(e) => {
+        e.preventDefault();
+        void save({ [copy.key]: value });
+      }}
+    >
+      <Field label={copy.label}>
+        <input
+          required
+          disabled={busy}
+          maxLength={copy.max}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          placeholder={copy.placeholder}
+        />
+      </Field>
+      <p className="crm-muted">
+        {copy.hint} Zapis dotyczy tylko bieżącej firmy.
+      </p>
+      <button
+        className="crm-button secondary justify-self-start"
+        disabled={busy || !value.trim()}
+      >
+        Zapisz usługę {copy.button}
+      </button>
+    </form>
+  );
+}
+function GoogleResourceSetup({
+  wid,
+  provider,
+  resource,
+  busy,
+  save,
+}: {
+  wid: string;
+  provider: "ga4" | "search_console" | "google_ads";
   resource: Resource;
   busy: boolean;
   save: (resource: Resource) => Promise<void>;

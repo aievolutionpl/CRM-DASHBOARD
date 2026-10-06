@@ -23,6 +23,21 @@ export const SECTIONS = [
   "automations",
 ] as const;
 export type Section = (typeof SECTIONS)[number];
+export const FIRM_STATUSES = [
+  "lead",
+  "active",
+  "vip",
+  "paused",
+  "lost",
+] as const;
+export type FirmStatus = (typeof FIRM_STATUSES)[number];
+export const firmStatusLabels: Record<FirmStatus, string> = {
+  lead: "Potencjalny",
+  active: "Aktywny klient",
+  vip: "Kluczowy (VIP)",
+  paused: "Wstrzymany",
+  lost: "Utracony",
+};
 export type Firm = {
   id: string;
   name: string;
@@ -35,6 +50,10 @@ export type Firm = {
   email?: string;
   phone?: string;
   address?: string;
+  status?: FirmStatus;
+  owner?: string;
+  source?: string;
+  tags?: string[];
 };
 export type Contact = {
   id: string;
