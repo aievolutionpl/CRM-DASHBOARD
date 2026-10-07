@@ -4,6 +4,7 @@ import { localRequest } from "@/lib/local/client";
 import { downloadFile } from "@/lib/crm/backup";
 import { today as currentDate } from "@/lib/crm/model";
 import GoogleAccount from "../integrations/google-account";
+import { statisticsSources, refreshStatistics } from "@/lib/integrations/batch";
 import GoogleSetup from "../integrations/google-setup";
 import { GoogleReportView } from "../integrations/google-reports";
 import {
@@ -59,6 +60,7 @@ export default function Connectors({
       { report: GoogleReport; stale: boolean }[]
     >([]);
   const input = useRef<HTMLInputElement>(null);
+  const inFlight = useRef(false);
   const load = useCallback(
     () =>
       localRequest(wid, "integrations")
@@ -122,6 +124,8 @@ export default function Connectors({
     operation: string,
     resource?: Resource,
   ) {
+    if (inFlight.current) return;
+    inFlight.current = true;
     setBusy(provider);
     setError("");
     setMessage("");
@@ -135,12 +139,52 @@ export default function Connectors({
     } catch (e) {
       setError(e instanceof Error ? e.message : "Błąd połączenia.");
     } finally {
-      setBusy("");
       await load();
+      setBusy("");
+      inFlight.current = false;
+    }
+  }
+  const refreshable = statisticsSources(configs, states);
+  async function refreshAll() {
+    if (inFlight.current || !refreshable.length) return;
+    inFlight.current = true;
+    setBusy("statistics");
+    setError("");
+    setMessage("");
+    try {
+      const results = await refreshStatistics(
+        refreshable,
+        (provider) =>
+          localRequest(wid, "integrations", {
+            method: "POST",
+            body: JSON.stringify({ provider, action: "sync" }),
+          }),
+        (provider, completed, total) =>
+          setMessage(
+            `Odświeżanie ${completed + 1}/${total}: ${providerLabels[provider]}…`,
+          ),
+      );
+      const failures = results.filter((result) => result.error);
+      setMessage(
+        `Odświeżono ${results.length - failures.length} z ${results.length} źródeł statystyk. ${failures.length ? "Pozostałe źródła wymagają uwagi; ostatnie zapisane raporty zostają dostępne." : "Zapisane wyniki są dostępne również na Pulpicie."}`,
+      );
+      if (failures.length)
+        setError(
+          failures
+            .map(
+              (result) => `${providerLabels[result.provider]}: ${result.error}`,
+            )
+            .join(" · "),
+        );
+      await load();
+    } finally {
+      inFlight.current = false;
+      setBusy("");
     }
   }
   async function importCsv(file?: File) {
-    if (!file) return;
+    if (!file || inFlight.current) return;
+    inFlight.current = true;
     setBusy("csv");
     setError("");
     try {
@@ -155,6 +199,7 @@ export default function Connectors({
     } catch (e) {
       setError(e instanceof Error ? e.message : "Błąd importu.");
     } finally {
+      inFlight.current = false;
       setBusy("");
       if (input.current) input.current.value = "";
     }
@@ -231,17 +276,42 @@ export default function Connectors({
           sprawdzonych odczytów API
         </p>
       </section>
+      <section
+        className="crm-connector-refresh"
+        aria-label="Odświeżanie statystyk"
+      >
+        <div>
+          <h3>Aktualne dane, jedna akcja</h3>
+          <p className="crm-muted">
+            Odczyt aktywnych GA4, Search Console, Google Ads, PostHog i Stripe.
+            WordPress importujesz osobno.
+          </p>
+        </div>
+        <button
+          className="crm-button"
+          disabled={!!busy || !refreshable.length}
+          onClick={() => void refreshAll()}
+        >
+          {busy === "statistics"
+            ? "Odświeżanie…"
+            : `Odśwież statystyki (${refreshable.length})`}
+        </button>
+        {!refreshable.length && (
+          <p className="crm-muted text-xs">
+            Najpierw wybierz usługę i sprawdź odczyt w jej karcie.
+          </p>
+        )}
+      </section>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div
           className="flex max-w-full gap-1 overflow-x-auto rounded-2xl bg-white/70 p-1 shadow-sm"
-          role="tablist"
+          role="group"
           aria-label="Kategorie konektorów"
         >
           {CATEGORIES.map((c) => (
             <button
               key={c.id}
-              role="tab"
-              aria-selected={category === c.id}
+              aria-pressed={category === c.id}
               className={`shrink-0 rounded-xl px-3.5 py-2 text-xs font-semibold transition ${category === c.id ? "bg-violet-600 text-white shadow" : "text-slate-600 hover:bg-violet-50"}`}
               onClick={() => setCategory(c.id)}
             >
@@ -277,12 +347,15 @@ export default function Connectors({
                 <ConnectorLogo id="ai" />
                 <h3 className="text-lg!">Twoje AI · Twój model</h3>
               </div>
-              <Badge tone="green">Wbudowany agent + OpenRouter / CLI</Badge>
+              <Badge tone="green">
+                Wbudowany agent + API / lokalne AI / CLI
+              </Badge>
             </div>
             <p className="crm-muted">
               Wbudowany Evolution Agent działa od razu, bez klucza. Dla
-              generatywnych odpowiedzi podłącz OpenRouter API albo lokalne CLI
-              Codex / Claude Code i zatwierdzaj propozycje agenta.
+              generatywnych odpowiedzi wybierz OpenRouter, OpenAI API, Ollamę /
+              LM Studio albo lokalne CLI Codex / Claude Code. Model i zasady
+              wykonywania akcji ustawisz w oknie agenta.
             </p>
             <button className="crm-button justify-self-start" onClick={openAi}>
               Otwórz połączenie AI

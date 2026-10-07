@@ -53,6 +53,7 @@ export default function AiAgent({
     [error, setError] = useState(""),
     [notice, setNotice] = useState("");
   const handled = useRef(0);
+  const inFlight = useRef(false);
   const available = (p: AgentProvider) =>
     p === "builtin" ? true : Boolean(status[p]);
   const load = useCallback(async () => {
@@ -75,6 +76,8 @@ export default function AiAgent({
   }, [load]);
   const send = useCallback(
     async (text: string, p: AgentProvider, m: string) => {
+      if (!text.trim() || inFlight.current) return;
+      inFlight.current = true;
       setBusy(true);
       setError("");
       setNotice("");
@@ -84,19 +87,20 @@ export default function AiAgent({
           body: JSON.stringify({ provider: p, model: m, prompt: text }),
         });
         setMessages(r.messages);
-        setPrompt("");
+        setPrompt((draft) => (draft === text ? "" : draft));
         if (r.usage)
           setNotice(
             `Zużycie zgłoszone przez dostawcę: ${JSON.stringify(r.usage)}`,
           );
       } catch (e) {
-        setPrompt(text);
+        setPrompt((draft) => draft || text);
         setError(
           e instanceof Error
             ? e.message
             : "Nie udało się przeprowadzić analizy.",
         );
       } finally {
+        inFlight.current = false;
         setBusy(false);
       }
     },
@@ -254,13 +258,12 @@ export default function AiAgent({
                     : "CLI niedostępne lub wyłączone"}
             </Badge>
           </div>
-          <div className="grid gap-2" role="radiogroup" aria-label="Silnik AI">
+          <div className="grid gap-2" role="group" aria-label="Silnik AI">
             {AGENT_PROVIDERS.map((p) => (
               <button
                 key={p}
                 type="button"
-                role="radio"
-                aria-checked={provider === p}
+                aria-pressed={provider === p}
                 disabled={busy}
                 onClick={() => choose(p)}
                 className={`flex items-start gap-3 rounded-2xl border p-3 text-left transition ${provider === p ? "border-violet-400 bg-violet-50/80 shadow-[0_0_0_3px_#ede9fe]" : "border-slate-100 bg-white/70 hover:border-violet-200"}`}

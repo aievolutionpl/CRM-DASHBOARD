@@ -253,11 +253,11 @@ export default function CloudWorkspace({ user }: { user: User }) {
     <div className="crm flex-col [&_.crm-main]:ml-0! [&_.crm-sidebar]:sticky! [&_.crm-sidebar]:top-0 [&_.crm-sidebar]:h-screen [&_.crm-sidebar]:self-start">
       <header className="flex flex-wrap items-center gap-3 border-b border-slate-200 bg-white p-4">
         <strong>Evolution Growth OS {isSqlite() && "· lokalnie"}</strong>
-        <label className="flex items-center gap-2">
+        <label className="flex max-w-full min-w-0 flex-wrap items-center gap-2">
           Przestrzeń
           <select
             aria-label="Przestrzeń robocza"
-            className="max-w-[18em] rounded-lg border border-slate-200 p-2"
+            className="max-w-full min-w-0 rounded-lg border border-slate-200 p-2 sm:max-w-[18em]"
             value={selected?.id ?? ""}
             disabled={pending || loading}
             onChange={(e) =>
@@ -275,7 +275,19 @@ export default function CloudWorkspace({ user }: { user: User }) {
         <span role="status" className="crm-muted">
           {sync}
         </span>
-        {selected && <span className="crm-muted">Rola: {selected.role}</span>}
+        {selected && (
+          <span className="crm-muted">
+            Rola:{" "}
+            {
+              {
+                owner: "właściciel",
+                admin: "administrator",
+                marketer: "marketing",
+                viewer: "podgląd",
+              }[selected.role]
+            }
+          </span>
+        )}
         <button
           className="crm-button secondary"
           disabled={!selected || pending || loading || isSqlite()}

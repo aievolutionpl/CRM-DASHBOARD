@@ -610,7 +610,15 @@ export default function Workspace({
                   openConnectors={() => navigate("connectors")}
                 />
               )}
-              <Dashboard {...props} />
+              <details
+                className="crm-dashboard-details crm-card mt-6 p-6"
+                open={!!query}
+              >
+                <summary>Szczegóły sprzedaży, zadania i aktywność</summary>
+                <div className="mt-5">
+                  <Dashboard {...props} />
+                </div>
+              </details>
             </>
           )}{" "}
           {section === "dashboard" && serviceMode && (
@@ -638,6 +646,7 @@ export default function Workspace({
           )}
           {section === "connectors" && isSqlite() && cloud?.id && (
             <Connectors
+              key={cloud.id}
               wid={cloud.id}
               mailSettings={() => navigate("settings")}
               openAi={() => navigate("ai")}
@@ -647,6 +656,7 @@ export default function Workspace({
           {section === "ai" && (
             <>
               <Copilot
+                key={cloud?.id ?? "local"}
                 workspace={cloud?.id ?? "local"}
                 readOnly={!!readOnly}
                 request={agentPrompt}
@@ -658,6 +668,7 @@ export default function Workspace({
                   </summary>
                   <div className="mt-5">
                     <AiAgent
+                      key={cloud.id}
                       wid={cloud.id}
                       storageBusy={storageBusy}
                       onApplied={() => reloadDatabase?.()}

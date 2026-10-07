@@ -17,6 +17,7 @@ import {
 } from "@/lib/ai/agent";
 import { Field, Icon } from "../crm/ui";
 import Markdown from "../local/markdown";
+import VoiceInput from "../ai/voice-input";
 
 type Status = Awaited<ReturnType<typeof agentStatus>>;
 const QUICK = [
@@ -182,7 +183,9 @@ export default function Copilot({
   const [info, setInfo] = useState("");
   const [engineOpen, setEngineOpen] = useState(false);
   const handled = useRef(0);
-  const end = useRef<HTMLDivElement>(null);
+  const log = useRef<HTMLDivElement>(null);
+  const follow = useRef(true);
+  const inFlight = useRef(false);
   useEffect(() => {
     agent.setWorkspace(workspace, readOnly);
   }, [workspace, readOnly]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -205,15 +208,23 @@ export default function Copilot({
     };
   }, []);
   useEffect(() => {
-    end.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    if (follow.current && log.current)
+      log.current.scrollTop = log.current.scrollHeight;
   }, [messages.length, busy]);
   const send = useCallback(async (text: string) => {
-    if (!text.trim()) return;
+    if (!text.trim() || inFlight.current) return;
+    inFlight.current = true;
+    follow.current = true;
     setBusy(true);
-    setPrompt("");
     try {
-      await runAgent(text.trim());
+      const reply = await runAgent(text.trim());
+      if (!reply.error) setPrompt((draft) => (draft === text ? "" : draft));
+    } catch {
+      setInfo(
+        "Nie udało się wysłać wiadomości. Treść pozostaje w polu — spróbuj ponownie.",
+      );
     } finally {
+      inFlight.current = false;
       setBusy(false);
     }
   }, []);
@@ -259,14 +270,15 @@ export default function Copilot({
           {state.label}
         </span>
       </div>
-      <div className="grid gap-2" role="radiogroup" aria-label="Dostawca AI">
+      <div className="grid gap-2" role="group" aria-label="Dostawca AI">
         {COPILOT_PROVIDERS.map((p) => {
           const r = ready(p, status, agent.keys);
           return (
             <button
               key={p}
-              role="radio"
-              aria-checked={provider === p}
+              type="button"
+              aria-pressed={provider === p}
+              disabled={busy}
               onClick={() => {
                 agent.setSettings({ provider: p, model: defaultModels[p] });
                 setModels([]);
@@ -414,7 +426,7 @@ export default function Copilot({
   return (
     <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_22em]">
       <div className="grid min-w-0 gap-4">
-        <div className="grid grid-cols-3 gap-3">
+        <div className="crm-agent-summary grid grid-cols-3 gap-3">
           {[
             { label: "Rozmowy", value: messages.length, icon: "agent" },
             { label: "Czeka na decyzję", value: pending.length, icon: "clock" },
@@ -490,7 +502,18 @@ export default function Copilot({
               {engine}
             </div>
           )}
-          <div className="flex-1 overflow-y-auto p-5 sm:p-6" aria-live="polite">
+          <div
+            ref={log}
+            className="crm-agent-log flex-1 overflow-y-auto p-5 sm:p-6"
+            role="log"
+            aria-label="Rozmowa z Evolution Agent"
+            aria-live="polite"
+            onScroll={(e) => {
+              const el = e.currentTarget;
+              follow.current =
+                el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+            }}
+          >
             {messages.length ? (
               <div className="grid gap-6">
                 {messages.map((m) => (
@@ -568,7 +591,6 @@ export default function Copilot({
                     Agent analizuje dane…
                   </div>
                 )}
-                <div ref={end} />
               </div>
             ) : (
               <div className="grid place-items-center py-10 text-center">
@@ -640,6 +662,12 @@ export default function Copilot({
                 <span className="sr-only">Wyślij</span>
               </button>
             </form>
+            <VoiceInput
+              value={prompt}
+              onChange={setPrompt}
+              disabled={busy}
+              maxLength={4000}
+            />
           </div>
         </section>
       </div>

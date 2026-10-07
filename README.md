@@ -10,7 +10,9 @@ Evolution Growth OS to narzędzie dla lokalnych firm usługowych, małych zespo�
 
 **Przykład:** klient trafia z reklamy, zostawia formularz i dzwoni. W Lead Hub zapisujesz te kontakty przy jednej osobie, dodajesz ofertę, rezerwację, wykonanie pracy i wpłatę. W Company Brain zbierasz ofertę i zasady komunikacji marki. AI Brain pomaga analizować kontekst oraz proponuje zadania i notatki, które zatwierdzasz przed wykonaniem.
 
-Jasny interfejs ze szkłem i miękkimi gradientami, widok mobilny, kwoty w PLN, walidacja NIP oraz polskie daty. **AI Evolution Polska · wersja 0.8.0.** Zalecana edycja lokalna zapisuje dane w SQLite i nie wymaga konta Supabase. Podłączenie AI jest opcjonalne.
+Jasny interfejs ze szkłem i miękkimi gradientami, widok mobilny, kwoty w PLN, walidacja NIP oraz polskie daty. **AI Evolution Polska · wersja 0.9.0.** Zalecana edycja lokalna zapisuje dane w SQLite i nie wymaga konta Supabase. Podłączenie AI jest opcjonalne.
+
+**W 0.9:** czytelniejszy pulpit z wyborem **6 / 12 miesięcy**, dotykowym wyborem miesiąca i tabelą danych; **zbiorcze odświeżanie statystyk** w Konektorach; **dyktowanie po polsku** w obu czatach agenta. Delikatny shader ożywia wyłącznie nagłówek, a przy ograniczeniu ruchu lub braku WebGPU pozostaje statyczny gradient. Opis zachowania i weryfikacji: [docs/UI-0.9.md](docs/UI-0.9.md). [Nowe screenshoty](#interfejs-09--nowe-screenshoty).
 
 ![Centrum dowodzenia Evolution Growth OS](docs/screenshots/command-center.png)
 
@@ -63,7 +65,7 @@ Na **tym samym komputerze** otwórz `http://localhost:3000`. Windows: możesz ur
 2. W trzech krokach onboardingu wybierz **CRM i sprzedaż** lub **Firma usługowa**.
 3. Otwórz **Lead Hub → Dodaj przykład DEMO**, aby zobaczyć historię od reklamy do płatności. DEMO jest wyraźnie oznaczone i oddzielone filtrem od rzeczywistych danych.
 4. Dodaj własnego leada, klienta lub firmę. Zapisz kontakt i ustalenia; zaplanuj zadanie albo realizację.
-5. Opcjonalnie podłącz dostawcę i model w **AI Brain**, a potem przygotuj wiedzę w **Company Brain → Wygeneruj ze strony**. Notatki możesz też dodać ręcznie lub zaimportować z Markdown.
+5. Opcjonalnie wybierz dostawcę i model w **Agent AI**. Agent wiedzy jest w rozwijanej sekcji **Agent Company Brain (SQLite)**. Przygotuj wiedzę w **Company Brain → Wygeneruj ze strony**; notatki możesz też dodać ręcznie lub zaimportować z Markdown.
 6. Zaimportuj wyniki kampanii w **Konektorach** i sprawdź je na **Pulpicie**. Dostępne wskaźniki wynikają z zapisanych danych.
 
 Serwer uruchamia się tylko na `127.0.0.1`. Zostaw terminal otwarty; `Ctrl+C` zatrzymuje aplikację. Możesz ustawić `CRM_LOCAL_PORT`, gdy port 3000 jest zajęty. `localhost` oznacza komputer przeglądarki: serwer uruchomiony w Codex nie działa na Twoim laptopie. Lokalna edycja nie wymaga Supabase ani konta.
@@ -168,6 +170,10 @@ Company Brain obsługuje foldery, wyszukiwanie, edycję, usuwanie, wersje notate
 Rozpakuj ZIP, a w Obsidianie wybierz **Otwórz folder jako skarbiec**. To import i eksport; edycja w Obsidianie nie synchronizuje się automatycznie z aplikacją. Eksport obejmuje notatki bieżącej przestrzeni, bez kampanii i CRM.
 
 ## Agent AI: model, autopilot i obsługa CRM
+
+Wpisz wiadomość w oknie czatu albo wybierz **Dyktuj wiadomość**. Dyktowanie ustawia język `pl-PL`, dopisuje rozpoznany tekst do szkicu i **nie wysyła go automatycznie**. Sprawdź treść i kliknij **Wyślij** (w agencie Company Brain: **Analizuj**). Enter wysyła, Shift+Enter dodaje nową linię. Funkcja zależy od obsługi rozpoznawania mowy i zgody na mikrofon w przeglądarce; jej usługa może przetwarzać dźwięk online. Odmowa dostępu nie usuwa szkicu. To dyktowanie wiadomości, bez rozmowy audio i odczytywania odpowiedzi na głos.
+
+Długa rozmowa przewija się wewnątrz czatu. Gdy czytasz wcześniejsze odpowiedzi, nowa odpowiedź nie przenosi Cię automatycznie na koniec. Nieudane wysłanie zachowuje tekst do poprawienia lub ponowienia; dodatkowe kliknięcie podczas trwającego żądania nie uruchamia drugiej analizy.
 
 Sekcja **Agent AI** działa w każdym trybie przechowywania. Agent dostaje aktualny stan CRM (firmy, kontakty, szanse, otwarte zadania, harmonogram i ostatnie raporty) i odpowiada w Markdown wraz z listą **akcji**. Każdą akcję wykonujesz przyciskiem **Wykonaj** (lub **Wykonaj wszystkie**), a po włączeniu **Autopilota** agent wykonuje je sam. Akcje są walidowane przed zapisem; nieznane lub błędne propozycje są odrzucane i pokazywane w czacie.
 
@@ -450,4 +456,24 @@ Logowanie firmy, wybór konta z MCC i raport reklam bez CSV. **Screenshoty używ
 
 <p align="center">
   <img src="docs/screenshots/google-ads-mobile-demo.png" width="390" alt="Raport Google Ads na telefonie — DEMO">
+</p>
+
+## Interfejs 0.9 — nowe screenshoty
+
+Zrzuty przedstawiają działającą edycję SQLite. Rekordy CRM są demonstracyjne; test konektorów używa jawnego mocka API, a dyktowanie — mocka usługi mowy. Nie są to wyniki kont użytkownika.
+
+**Pulpit:** wybór 6 / 12 miesięcy, trwały wybór miesiąca, tabela danych i priorytety. Szczegóły starszego podsumowania sprzedaży rozwijasz pod statystykami.
+
+![Pulpit 0.9 — 12 miesięcy, dane CRM DEMO](docs/screenshots/ui-dashboard-1440-demo.png)
+
+**Konektory:** odświeżanie wielu aktywnych źródeł jednym przyciskiem. Przykład pokazuje częściowy błąd GA4; odczyt Search Console nadal kończy się poprawnie.
+
+![Konektory 0.9 — zbiorcze odświeżanie, mock API DEMO](docs/screenshots/ui-connectors-demo.png)
+
+**Agent AI:** model, czat i dyktowanie po polsku. Tekst rozpoznany przez mikrofon wymaga ręcznego wysłania. Odpowiedź na zrzucie pochodzi z wbudowanego agenta offline.
+
+![Agent AI 0.9 — działający czat i przycisk dyktowania, DEMO](docs/screenshots/ui-agent-demo.png)
+
+<p align="center">
+  <img src="docs/screenshots/ui-dashboard-390-demo.png" width="390" alt="Pulpit 0.9 na telefonie — rekordy CRM DEMO">
 </p>

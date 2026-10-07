@@ -7,6 +7,7 @@ import {
 } from "@/lib/ai/model";
 import { Field, Icon } from "../crm/ui";
 import Markdown from "./markdown";
+import VoiceInput from "../ai/voice-input";
 const QUICK = [
   "Co powinienem zrobić dzisiaj?",
   "Pokaż ryzyka w sprzedaży",
@@ -35,13 +36,26 @@ export default function AgentChat({
   quick: (text: string) => void;
   decision: (id: string, approve: boolean) => Promise<void>;
 }) {
-  const end = useRef<HTMLDivElement>(null);
+  const log = useRef<HTMLDivElement>(null);
+  const follow = useRef(true);
   useEffect(() => {
-    end.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    if (follow.current && log.current)
+      log.current.scrollTop = log.current.scrollHeight;
   }, [messages.length, busy]);
   return (
     <section className="crm-card flex min-h-[560px] flex-col overflow-hidden">
-      <div className="flex-1 overflow-y-auto p-5 sm:p-6" aria-live="polite">
+      <div
+        ref={log}
+        className="crm-agent-log flex-1 overflow-y-auto p-5 sm:p-6"
+        role="log"
+        aria-label="Rozmowa z agentem Company Brain"
+        aria-live="polite"
+        onScroll={(e) => {
+          const el = e.currentTarget;
+          follow.current =
+            el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+        }}
+      >
         {messages.length ? (
           <div className="grid gap-6">
             {messages.map((m) => (
@@ -157,7 +171,6 @@ export default function AgentChat({
                 Agent analizuje dane…
               </div>
             )}
-            <div ref={end} />
           </div>
         ) : (
           <div className="grid place-items-center py-10 text-center">
@@ -180,13 +193,22 @@ export default function AgentChat({
               type="button"
               disabled={busy || storageBusy || !canAsk}
               className="shrink-0 rounded-full border border-violet-100 bg-violet-50/70 px-3 py-1.5 text-xs font-medium text-violet-700 transition hover:bg-violet-100 disabled:opacity-50"
-              onClick={() => quick(q)}
+              onClick={() => {
+                follow.current = true;
+                quick(q);
+              }}
             >
               {q}
             </button>
           ))}
         </div>
-        <form onSubmit={ask} className="grid gap-3">
+        <form
+          onSubmit={(e) => {
+            follow.current = true;
+            void ask(e);
+          }}
+          className="grid gap-3"
+        >
           <Field label="Wiadomość do agenta">
             <textarea
               rows={3}
@@ -215,6 +237,12 @@ export default function AgentChat({
             {busy ? "Agent pracuje…" : "Analizuj"}
           </button>
         </form>
+        <VoiceInput
+          value={prompt}
+          onChange={setPrompt}
+          disabled={busy || !!storageBusy}
+          maxLength={2000}
+        />
       </div>
     </section>
   );

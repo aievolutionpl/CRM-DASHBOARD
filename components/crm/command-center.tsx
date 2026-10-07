@@ -10,6 +10,7 @@ import {
   type InsightTone,
 } from "@/lib/crm/insights";
 import { Icon } from "./ui";
+import BrandAtmosphere from "./brand-atmosphere";
 
 const tones: Record<InsightTone, string> = {
   red: "bg-rose-500",
@@ -96,9 +97,11 @@ function RevenueChart({
   months: { key: string; label: string; won: number; forecast: number }[];
 }) {
   const [hover, setHover] = useState<number | null>(null);
+  const [selected, setSelected] = useState<string | null>(null);
   const max = Math.max(1, ...months.map((m) => m.won + m.forecast));
   const current = today().slice(0, 7);
-  const active = hover ?? months.findIndex((m) => m.key === current);
+  const active =
+    hover ?? months.findIndex((m) => m.key === (selected ?? current));
   const point = months[active] ?? months[months.length - 1];
   return (
     <div>
@@ -114,7 +117,7 @@ function RevenueChart({
             {money(point.won + point.forecast)}
           </strong>
         </div>
-        <div className="flex gap-4 text-xs text-slate-500">
+        <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-slate-500">
           <span className="flex items-center gap-1.5">
             <i className="size-2.5 rounded-sm bg-gradient-to-t from-violet-600 to-violet-400" />
             Zrealizowane {money(point.won)}
@@ -134,9 +137,12 @@ function RevenueChart({
             key={m.key}
             type="button"
             aria-label={`${m.label}: zrealizowane ${money(m.won)}, prognoza ${money(m.forecast)}`}
-            className="group flex h-full flex-1 flex-col items-center justify-end gap-2 outline-none"
+            className="group flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-2 outline-none"
             onMouseEnter={() => setHover(i)}
             onFocus={() => setHover(i)}
+            onBlur={() => setHover(null)}
+            onClick={() => setSelected(m.key)}
+            aria-pressed={selected === m.key}
           >
             <div className="flex w-full max-w-11 flex-1 flex-col justify-end overflow-hidden rounded-xl">
               <div
@@ -155,7 +161,7 @@ function RevenueChart({
               )}
             </div>
             <span
-              className={`text-[11px] capitalize ${m.key === current ? "font-bold text-violet-700" : "text-slate-500"}`}
+              className={`text-[11px] capitalize ${months.length > 7 && i % 2 === 1 ? "invisible sm:visible" : ""} ${m.key === current ? "font-bold text-violet-700" : "text-slate-500"}`}
             >
               {m.label}
             </span>
@@ -189,7 +195,21 @@ export default function CommandCenter({
   );
   const list = useMemo(() => insights(data, day), [data, day]);
   const score = useMemo(() => healthScore(data, day), [data, day]);
-  const months = useMemo(() => monthlyRevenue(data, day), [data, day]);
+  const [range, setRange] = useState(6);
+  const months = useMemo(
+    () =>
+      monthlyRevenue(
+        {
+          ...data,
+          deals: data.deals.filter((deal) =>
+            serviceMode ? Boolean(deal.service) : !deal.service,
+          ),
+        },
+        day,
+        range,
+      ),
+    [data, day, range, serviceMode],
+  );
   const stats = useMemo(() => pipelineStats(data), [data]);
   const [question, setQuestion] = useState("");
   const todayTasks = s.tasks.filter((t) => !t.done && t.date <= day).length;
@@ -225,7 +245,8 @@ export default function CommandCenter({
   };
   return (
     <div className="mb-6 grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5">
-      <section className="relative overflow-hidden rounded-[26px] bg-[radial-gradient(120%_140%_at_0%_0%,#5b3bff_0%,#3a22b8_38%,#1c1446_100%)] p-6 text-white shadow-[0_24px_60px_-28px_#3a22b8] sm:p-8">
+      <section className="crm-command-hero relative overflow-hidden rounded-[26px] bg-[radial-gradient(120%_140%_at_0%_0%,#5b3bff_0%,#3a22b8_38%,#1c1446_100%)] p-6 text-white shadow-[0_24px_60px_-28px_#3a22b8] sm:p-8">
+        <BrandAtmosphere />
         <div className="pointer-events-none absolute -top-24 -right-20 size-72 rounded-full bg-fuchsia-400/25 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-28 left-1/3 size-72 rounded-full bg-cyan-300/15 blur-3xl" />
         <div className="relative grid gap-7 lg:grid-cols-[1fr_auto] lg:items-center">
@@ -262,7 +283,7 @@ export default function CommandCenter({
                 Zapytaj
               </button>
             </form>
-            <div className="mt-3 flex flex-wrap gap-2">
+            <div className="crm-command-questions mt-3 flex flex-wrap gap-2">
               {QUICK.map((q) => (
                 <button
                   key={q}
@@ -292,10 +313,10 @@ export default function CommandCenter({
       </section>
       <div className="grid gap-5 xl:grid-cols-[1.35fr_1fr]">
         <section className="crm-card p-6">
-          <div className="mb-5 flex items-start justify-between gap-4">
+          <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
             <div>
               <span className="crm-eyebrow">
-                PRZYCHÓD · 6 MIESIĘCY + NASTĘPNY
+                PRZYCHÓD · {range} MIESIĘCY + NASTĘPNY
               </span>
               <h3 className="mt-1 text-lg!">
                 {serviceMode
@@ -311,12 +332,65 @@ export default function CommandCenter({
               <Icon name="arrow" size={15} />
             </button>
           </div>
-          <RevenueChart months={months} />
+          <div
+            className="crm-period-control mb-5"
+            role="group"
+            aria-label="Okres wykresu przychodów"
+          >
+            {[6, 12].map((period) => (
+              <button
+                key={period}
+                type="button"
+                aria-pressed={range === period}
+                onClick={() => setRange(period)}
+              >
+                {period} miesięcy
+              </button>
+            ))}
+          </div>
+          <RevenueChart key={range} months={months} />
+          <p className="crm-muted mt-3! text-xs">
+            Dotknij słupka lub wybierz go klawiaturą, aby sprawdzić miesiąc.
+            Prognoza nie jest przychodem.
+          </p>
+          <details className="crm-revenue-table mt-4">
+            <summary>Dane wykresu i sposób obliczania</summary>
+            <p className="crm-muted mt-2! text-xs">
+              {serviceMode
+                ? "Realizacja: zakończone usługi. Prognoza: zarezerwowane i trwające usługi."
+                : "Realizacja: wygrane szanse. Prognoza: wartość otwartych szans × prawdopodobieństwo."}{" "}
+              Miesiąc wynika z terminu zamknięcia szansy lub rozpoczęcia usługi.
+              To wartości CRM, nie zaksięgowane wpływy.
+            </p>
+            <div className="overflow-x-auto">
+              <table>
+                <caption className="sr-only">
+                  Miesięczne wartości CRM w PLN
+                </caption>
+                <thead>
+                  <tr>
+                    <th>Miesiąc</th>
+                    <th>Zrealizowane</th>
+                    <th>Prognoza</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {months.map((month) => (
+                    <tr key={month.key}>
+                      <th scope="row">{month.key}</th>
+                      <td>{money(month.won)}</td>
+                      <td>{money(month.forecast)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </details>
         </section>
         <section className="crm-card p-6">
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
-              <span className="crm-eyebrow">REKOMENDACJE AI</span>
+              <span className="crm-eyebrow">PRIORYTETY TWOJEJ FIRMY</span>
               <h3 className="mt-1 text-lg!">Następne najlepsze kroki</h3>
             </div>
             <span className="rounded-full bg-violet-50 px-2.5 py-1 text-[11px] font-semibold text-violet-700">
@@ -327,7 +401,7 @@ export default function CommandCenter({
             {list.slice(0, 5).map((i) => (
               <li
                 key={i.id}
-                className="group flex items-start gap-3 rounded-2xl border border-slate-100 bg-white/70 p-3.5 transition hover:border-violet-200 hover:shadow-sm"
+                className="crm-priority-row group flex items-start gap-3 rounded-2xl border border-slate-100 bg-white/70 p-3.5 transition hover:border-violet-200 hover:shadow-sm"
               >
                 <span
                   className={`mt-1.5 size-2.5 shrink-0 rounded-full ${tones[i.tone]} ring-4 ring-slate-50`}

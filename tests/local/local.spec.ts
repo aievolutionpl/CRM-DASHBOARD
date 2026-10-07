@@ -144,11 +144,19 @@ test("Import kampanii zasila dashboard; konektory i AI nie udają połączenia",
       path: "docs/screenshots/local-dashboard.png",
       fullPage: true,
     });
-  await page.getByRole("button", { name: "AI Brain", exact: true }).click();
+  await page.getByRole("button", { name: "Agent AI", exact: true }).click();
+  await page
+    .getByText("Agent Company Brain (SQLite) — analiza notatek i marketingu", {
+      exact: true,
+    })
+    .click();
   await expect(
     page.getByRole("button", { name: "Analizuj", exact: true }),
   ).toBeDisabled();
-  await page.getByLabel("Dostawca AI").selectOption("codex");
+  await page
+    .getByRole("group", { name: "Silnik AI", exact: true })
+    .getByRole("button", { name: /Codex/ })
+    .click();
   await expect(page.getByText(/CLI niedostępne lub wyłączone/)).toBeVisible();
 });
 test("lokalna baza blokuje obcy origin i obsługuje mobilną wiedzę", async ({
@@ -233,12 +241,21 @@ test("okno agenta: wybór modelu, odpowiedź i zatwierdzenie z testowym dostawc�
       },
     });
   });
-  await page.getByRole("button", { name: "AI Brain", exact: true }).click();
-  await page.getByLabel("Dostawca AI").selectOption("openrouter");
+  await page.getByRole("button", { name: "Agent AI", exact: true }).click();
+  await page
+    .getByText("Agent Company Brain (SQLite) — analiza notatek i marketingu", {
+      exact: true,
+    })
+    .click();
+  await page
+    .getByRole("group", { name: "Silnik AI", exact: true })
+    .getByRole("button", { name: /OpenRouter/ })
+    .click();
   await page.getByRole("button", { name: "Pobierz modele" }).click();
   await page.getByLabel("Model AI", { exact: true }).fill("test/wybrany-model");
   await page
     .getByLabel("Wiadomość do agenta", { exact: true })
+    .last()
     .fill("Analiza firmy");
   await page.getByRole("button", { name: "Analizuj", exact: true }).click();
   await expect(page.getByText(/odpowiedź dostawcy testowego/)).toBeVisible();
@@ -250,7 +267,7 @@ test("okno agenta: wybór modelu, odpowiedź i zatwierdzenie z testowym dostawc�
   await page.getByRole("button", { name: "Zatwierdź i wykonaj" }).click();
   expect(executed).toBe(true);
   await expect(
-    page.getByRole("heading", { name: "AI Brain", exact: true }),
+    page.getByRole("heading", { name: "Agent AI", exact: true }).first(),
   ).toBeVisible();
   await expect(
     page.getByText("Wykonano po zatwierdzeniu", { exact: true }),
