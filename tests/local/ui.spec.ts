@@ -718,3 +718,80 @@ test("Monitoring marki: historia skanów, alert spadku i cotygodniowe zadanie �
     ),
   ).toBe(true);
 });
+
+test("Konkurencja: skan konkurenta, tabela porównania, przewagi i Company Brain — mock skanu", async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  const id = await ready(page);
+  await page.route("**/api/brand/scan", async (route) => {
+    const own = !route.request().postDataJSON().website.includes("rywal");
+    await route.fulfill({
+      json: {
+        brand: {
+          name: own ? "Moja Firma · DEMO" : "Rywal · DEMO",
+          website: own
+            ? "https://moja.example.pl/"
+            : "https://rywal.example.pl/",
+          rating: {
+            value: own ? 4.1 : 4.8,
+            count: own ? 5 : 90,
+            source: "Google",
+            url: "",
+          },
+          audit: {
+            score: own ? 60 : 85,
+            responseMs: 500,
+            checks: [{ id: "a", label: "A", ok: true, weight: 1, hint: "" }],
+          },
+          trackers: own ? [] : ["Google Analytics 4"],
+          services: own ? [] : ["Remonty łazienek"],
+          scannedAt: "2026-10-20T08:00:00.000Z",
+          applied: true,
+        },
+      },
+    });
+  });
+  await page
+    .getByPlaceholder("https://twoja-firma.pl")
+    .first()
+    .fill("https://moja.example.pl");
+  await page.getByRole("button", { name: "Dopasuj dashboard" }).click();
+  await expect(
+    page.getByRole("button", { name: "Profil firmy Moja Firma · DEMO" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Profil firmy", exact: true }).click();
+  await page.getByLabel("Strona konkurenta").fill("https://rywal.example.pl");
+  await page.getByRole("button", { name: "Dodaj konkurenta" }).click();
+  await expect(
+    page.getByText("Rywal · DEMO ma lepszą stronę (85 vs 60/100)"),
+  ).toBeVisible();
+  await expect(page.getByText("Remonty łazienek")).toBeVisible();
+  await page
+    .getByRole("button", { name: "Zapisz w Company Brain" })
+    .nth(1)
+    .click();
+  await expect(
+    page.getByText("Porównanie zapisane w Company Brain"),
+  ).toBeVisible();
+  const brain = await (
+    await page.request.get(`/api/local/workspaces/${id}/brain`)
+  ).json();
+  const note = brain.documents.find(
+    (d: { category: string }) => d.category === "competitors",
+  );
+  expect(note.content).toContain("| Rywal · DEMO |");
+  await expect(
+    page.getByText("Zapisano w SQLite", { exact: true }),
+  ).toBeVisible();
+  const saved = await (
+    await page.request.get(`/api/local/workspaces/${id}/data`)
+  ).json();
+  expect(saved.settings.brand.competitors[0].name).toBe("Rywal · DEMO");
+  await page
+    .getByRole("button", { name: "Usuń Rywal · DEMO z porównania" })
+    .click();
+  await expect(
+    page.getByText("Dodaj do 3 stron konkurentów", { exact: false }),
+  ).toBeVisible();
+});

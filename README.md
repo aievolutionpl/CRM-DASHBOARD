@@ -134,6 +134,7 @@ Terminy wpisujesz jako czas miejscowy **Europe/Warsaw**. To terminarz rezerwacji
 3. W **Profilu firmy** sprawdź opinie, audyt strony z listą poprawek, wykrytą analitykę i platformę, ofertę, kontakt oraz statystyki GitHub. Popraw nazwę, slogan, kolory lub czcionkę nagłówków.
 4. **Zapisz w Company Brain** zapisuje profil jako notatkę Markdown; **Zapytaj agenta o markę** otwiera agenta, który zna profil firmy.
 5. **Monitoruj co tydzień** dodaje zadanie w Harmonogramie: ponowny skan, historia wyniku strony i ocen oraz ostrzeżenie o spadkach.
+6. **Konkurencja:** dodaj do 3 stron konkurentów — tabela porównania (strona, opinie, social media, analityka, szybkość), lista przewag konkurencji i notatka w Company Brain.
 
 Opcjonalnie w `.env.local`: `GOOGLE_PLACES_API_KEY` (ocena i recenzje z Map Google) oraz `GITHUB_TOKEN` (wyższy limit API GitHub). Odczyt strony działa bez proxy, tak jak generator Company Brain. Profil zapisuje się w przestrzeni (przeglądarka, SQLite, Supabase — migracja `202610290001_brand_profile.sql`). Szczegóły: [docs/BRAND-STUDIO.md](docs/BRAND-STUDIO.md).
 

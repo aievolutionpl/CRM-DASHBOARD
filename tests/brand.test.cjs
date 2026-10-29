@@ -515,3 +515,66 @@ test("historia marki: punkty, jeden skan dziennie, alerty spadków i harmonogram
   assert.equal(automation.jobKindLabels.brand, "Monitoruj markę");
   assert.ok(automation.JOB_TEMPLATES.some((t) => t.kind === "brand"));
 });
+
+test("konkurencja: zapis, przewagi konkurentów, notatka i kontekst agenta", () => {
+  const own = brand.validateBrand({
+    ...brand.emptyBrand(),
+    name: "Róża",
+    website: "https://roza.example.pl/",
+    rating: { value: 4.2, count: 10, source: "Google", url: "" },
+    audit: {
+      score: 70,
+      responseMs: 900,
+      checks: [{ id: "a", label: "Opis meta", ok: false, weight: 1, hint: "" }],
+    },
+    socials: [{ network: "Facebook", url: "https://facebook.com/roza" }],
+  });
+  const rival = brand.toCompetitor(
+    brand.validateBrand({
+      ...brand.emptyBrand(),
+      name: "Kwiatek",
+      website: "https://kwiatek.example.pl/",
+      rating: { value: 4.9, count: 300, source: "Google", url: "" },
+      audit: {
+        score: 88,
+        responseMs: 400,
+        checks: [{ id: "a", label: "A", ok: true, weight: 1, hint: "" }],
+      },
+      trackers: ["Google Analytics 4"],
+      socials: [1, 2, 3, 4].map((i) => ({
+        network: `N${i}`,
+        url: `https://x${i}.pl`,
+      })),
+      services: ["Bukiety", "Wesela"],
+      colors: { primary: "#16a34a", accent: "#000000", palette: [] },
+    }),
+  );
+  assert.equal(rival.score, 88);
+  assert.equal(rival.socials, 4);
+  const withRival = brand.validateBrand({
+    ...own,
+    competitors: [rival, rival, rival, rival],
+  });
+  assert.equal(withRival.competitors.length, 3);
+  const gaps = brand.competitorGaps({ ...own, competitors: [rival] });
+  assert.equal(gaps.length, 5);
+  assert.match(gaps[0], /88 vs 70/);
+  const md = markdown.competitorsMarkdown({ ...own, competitors: [rival] });
+  assert.match(md, /\| Róża \(my\) \|/);
+  assert.match(
+    md,
+    /\| Kwiatek \| https:\/\/kwiatek\.example\.pl\/ \| 88 \| 4\.9 \| 300 \|/,
+  );
+  assert.match(md, /## Gdzie konkurencja wygrywa/);
+  const ctx = JSON.parse(
+    agent.copilotContext(
+      { firms: [], contacts: [], deals: [], tasks: [], mails: [] },
+      "2026-10-29",
+      {
+        brand: { ...own, competitors: [rival] },
+      },
+    ),
+  );
+  assert.equal(ctx.ownCompany.competitors[0].name, "Kwiatek");
+  assert.equal(ctx.ownCompany.competitorGaps.length, 5);
+});

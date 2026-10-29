@@ -53,7 +53,13 @@ export default function BrandHistory({
     history.length < 2
       ? w / 2
       : pad + (i / (history.length - 1)) * (w - 2 * pad);
-  const y = (v: number) => h - pad - (v / 100) * (h - 2 * pad);
+  const values = history.flatMap((p) =>
+    SERIES.map((x) => x.value(p)).filter((v): v is number => v !== null),
+  );
+  const low = Math.max(0, Math.floor((Math.min(100, ...values) - 8) / 10) * 10),
+    high = Math.min(100, Math.ceil((Math.max(0, ...values) + 4) / 10) * 10),
+    range = Math.max(10, high - low);
+  const y = (v: number) => h - pad - ((v - low) / range) * (h - 2 * pad);
   const point = active === null ? history.at(-1) : history[active];
   async function scanNow() {
     setBusy(true);
@@ -161,17 +167,19 @@ export default function BrandHistory({
             aria-label="Historia wyniku strony i oceny klientów"
             onMouseLeave={() => setActive(null)}
           >
-            {[25, 50, 75].map((v) => (
-              <line
-                key={v}
-                x1="0"
-                x2={w}
-                y1={y(v)}
-                y2={y(v)}
-                stroke="#eef0f6"
-                vectorEffect="non-scaling-stroke"
-              />
-            ))}
+            {[low + range / 4, low + range / 2, low + (3 * range) / 4].map(
+              (v) => (
+                <line
+                  key={v}
+                  x1="0"
+                  x2={w}
+                  y1={y(v)}
+                  y2={y(v)}
+                  stroke="#eef0f6"
+                  vectorEffect="non-scaling-stroke"
+                />
+              ),
+            )}
             {SERIES.map((s) => {
               const pts = history
                 .map((p, i) => [i, s.value(p)] as const)

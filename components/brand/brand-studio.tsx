@@ -15,6 +15,7 @@ import { Icon } from "../crm/ui";
 import { Panel } from "../insights/kit";
 import { BrandLogo } from "./theme";
 import BrandHistory from "./brand-history";
+import Competitors from "./competitors";
 import { SCAN_STEPS, useBrandScan } from "./use-brand-scan";
 
 const count = (v: number) =>
@@ -459,6 +460,11 @@ export default function BrandStudio({
             </ul>
           )}
           <BrandHistory notify={notify} readOnly={readOnly} />
+          <Competitors
+            notify={notify}
+            readOnly={readOnly}
+            workspace={workspace}
+          />
           <div className="grid gap-5 xl:grid-cols-[1.25fr_1fr]">
             <Panel eyebrow="IDENTYFIKACJA" title="Nazwa, opis i wygląd">
               <div className="grid gap-4">

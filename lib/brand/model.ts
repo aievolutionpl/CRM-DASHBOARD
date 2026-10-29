@@ -46,6 +46,22 @@ export type BrandPoint = {
   stars: number | null;
   issues: number;
 };
+export type Competitor = {
+  name: string;
+  website: string;
+  logo: string;
+  scannedAt: string;
+  score: number | null;
+  rating: number | null;
+  reviews: number;
+  trackers: string[];
+  technologies: string[];
+  socials: number;
+  services: string[];
+  failed: string[];
+  responseMs: number | null;
+  color: string;
+};
 export type BrandProfile = {
   name: string;
   tagline: string;
@@ -80,6 +96,7 @@ export type BrandProfile = {
   scannedAt: string;
   applied: boolean;
   history: BrandPoint[];
+  competitors: Competitor[];
 };
 
 const LIMIT = 120_000;
@@ -136,6 +153,7 @@ export function emptyBrand(): BrandProfile {
     scannedAt: "",
     applied: false,
     history: [],
+    competitors: [],
   };
 }
 
@@ -278,6 +296,31 @@ export function validateBrand(value: unknown): BrandProfile | undefined {
                 : null,
             issues: Math.max(0, Math.round(num(h.issues))),
           }))
+      : [],
+    competitors: Array.isArray(v.competitors)
+      ? v.competitors.slice(0, 3).map((c) => ({
+          name: str(c?.name, 120),
+          website: safeUrl(c?.website),
+          logo: safeUrl(c?.logo),
+          scannedAt: str(c?.scannedAt, 30),
+          score:
+            typeof c?.score === "number" && Number.isFinite(c.score)
+              ? Math.min(100, Math.max(0, Math.round(c.score)))
+              : null,
+          rating:
+            typeof c?.rating === "number" && Number.isFinite(c.rating)
+              ? Math.min(5, Math.max(0, c.rating))
+              : null,
+          reviews: Math.max(0, Math.round(num(c?.reviews))),
+          trackers: strings(c?.trackers, 12, 40),
+          technologies: strings(c?.technologies, 12, 40),
+          socials: Math.max(0, Math.round(num(c?.socials))),
+          services: strings(c?.services, 8, 160),
+          failed: strings(c?.failed, 24, 120),
+          responseMs:
+            typeof c?.responseMs === "number" ? Math.round(c.responseMs) : null,
+          color: color(c?.color, "#94a3b8"),
+        }))
       : [],
   };
 }
@@ -454,4 +497,47 @@ export function brandAlerts(history: BrandPoint[]) {
   if (prev.score !== null && last.score === null)
     alerts.push("strona przestała odpowiadać przy skanie");
   return alerts;
+}
+
+export function toCompetitor(scanned: BrandProfile): Competitor {
+  return {
+    name: scanned.name || scanned.website,
+    website: scanned.website,
+    logo: scanned.logo || scanned.icon,
+    scannedAt: scanned.scannedAt,
+    score: scanned.audit.checks.length ? scanned.audit.score : null,
+    rating: scanned.rating?.value ?? null,
+    reviews: scanned.rating?.count ?? 0,
+    trackers: scanned.trackers,
+    technologies: scanned.technologies,
+    socials: scanned.socials.length,
+    services: scanned.services.slice(0, 8),
+    failed: scanned.audit.checks.filter((c) => !c.ok).map((c) => c.label),
+    responseMs: scanned.audit.responseMs,
+    color: scanned.colors.primary,
+  };
+}
+export function competitorGaps(brand: BrandProfile) {
+  const own = toCompetitor(brand);
+  const gaps: string[] = [];
+  for (const c of brand.competitors) {
+    if (c.score !== null && own.score !== null && c.score > own.score)
+      gaps.push(`${c.name} ma lepszą stronę (${c.score} vs ${own.score}/100)`);
+    if (c.rating !== null && (own.rating === null || c.rating > own.rating))
+      gaps.push(
+        `${c.name} ma wyższą ocenę (${c.rating.toFixed(1)} vs ${own.rating?.toFixed(1) ?? "brak"})`,
+      );
+    if (c.reviews > own.reviews * 1.5 && c.reviews - own.reviews >= 10)
+      gaps.push(`${c.name} ma więcej opinii (${c.reviews} vs ${own.reviews})`);
+    if (
+      c.trackers.some((t) => !/Cookie/.test(t)) &&
+      !own.trackers.some((t) => !/Cookie/.test(t))
+    )
+      gaps.push(`${c.name} mierzy ruch (${c.trackers.join(", ")}), Ty nie`);
+    if (c.socials > own.socials + 1)
+      gaps.push(
+        `${c.name} ma więcej kanałów social (${c.socials} vs ${own.socials})`,
+      );
+  }
+  return gaps;
 }

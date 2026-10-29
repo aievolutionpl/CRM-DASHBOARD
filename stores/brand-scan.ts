@@ -1,6 +1,7 @@
 "use client";
 import {
   brandAlerts,
+  toCompetitor,
   validateBrand,
   withHistory,
   type BrandProfile,
@@ -36,6 +37,7 @@ export function applyScannedBrand(scanned: BrandProfile, apply = true) {
     { ...scanned, applied: apply || (previous?.applied ?? true) },
     previous,
   );
+  brand.competitors = previous?.competitors ?? [];
   if (previous?.name === brand.name) {
     brand.colors = previous.colors;
     brand.useFont = previous.useFont;
@@ -72,4 +74,36 @@ export async function monitorBrand() {
       ? `Uwaga: ${alerts.join("; ")}. Teraz: ${parts.join(", ")}.`
       : `Marka bez spadków: ${parts.join(", ") || "zapisano skan"}.`,
   };
+}
+
+export async function addCompetitor(website: string) {
+  const current = useCrm.getState().brand;
+  if (!current) throw Error("Najpierw zeskanuj własną markę.");
+  if (current.competitors.length >= 3)
+    throw Error(
+      "Możesz porównać do 3 konkurentów. Usuń jednego, aby dodać kolejnego.",
+    );
+  const scanned = await scanBrandProfile(website, "");
+  if (!scanned.website)
+    throw Error("Nie udało się odczytać strony konkurenta.");
+  const competitor = toCompetitor(scanned);
+  const latest = useCrm.getState().brand;
+  if (!latest) throw Error("Profil marki został usunięty.");
+  const host = (u: string) => {
+    try {
+      return new URL(u).hostname.replace(/^www\./, "");
+    } catch {
+      return u;
+    }
+  };
+  useCrm.getState().setBrand({
+    ...latest,
+    competitors: [
+      ...latest.competitors.filter(
+        (c) => host(c.website) !== host(competitor.website),
+      ),
+      competitor,
+    ].slice(-3),
+  });
+  return competitor;
 }

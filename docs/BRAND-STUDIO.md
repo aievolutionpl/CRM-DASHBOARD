@@ -18,6 +18,10 @@ W Profilu firmy poprawisz nazwę, slogan i opis, wybierzesz kolor główny i akc
 
 Każdy skan dopisuje punkt historii (wynik strony, ocena i liczba opinii, gwiazdki GitHub, liczba problemów; jeden punkt dziennie, do 52). Panel **Monitoring marki** w Profilu firmy rysuje wykres wyniku strony i oceny, pokazuje tabelę historii i ostrzega, gdy od poprzedniego skanu wynik spadł o 5+ pkt, ocena o 0,1+, pojawiły się nowe problemy albo strona przestała odpowiadać. **Skanuj teraz** ponawia skan z zapisanych adresów, a **Monitoruj co tydzień** dodaje do Harmonogramu zadanie „Monitoruj markę” (poniedziałek 8:15). Zadanie z alertem kończy się statusem błędu, więc trafia na listę uruchomień i powiadomień. Agent AI może zaplanować je akcją `schedule_job` z `kind: brand`.
 
+## Porównanie z konkurencją · 0.11
+
+Panel **Konkurencja** w Profilu firmy skanuje do 3 stron konkurentów tym samym skanerem i zestawia je z Twoją firmą: wynik strony, ocena i liczba opinii, kanały social media, pomiar ruchu, czas odpowiedzi i platforma. Najlepszy wynik w wierszu jest zielony, Twój słabszy — czerwony. Lista **Gdzie konkurencja wygrywa** wymienia konkretne przewagi, a obok widać ofertę z nagłówków stron konkurentów. **Zapisz w Company Brain** tworzy notatkę w kategorii Konkurencja (tabela + przewagi + oferta), a agent AI dostaje konkurentów i przewagi w kontekście `ownCompany`.
+
 ## Zapis i bezpieczeństwo
 
 - Profil jest częścią ustawień przestrzeni: localStorage (tryb przeglądarki), SQLite lub Supabase (migracja `202610290001_brand_profile.sql`, limit 200 KB). Walidacja odrzuca adresy inne niż http/https, niepoprawne kolory i zbyt duże dane.

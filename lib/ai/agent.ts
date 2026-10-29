@@ -1,4 +1,4 @@
-import type { BrandProfile } from "../brand/model";
+import { competitorGaps, type BrandProfile } from "../brand/model";
 import {
   DEAL_STAGES,
   validEmail,
@@ -251,6 +251,15 @@ export function copilotContext(
             .map((c) => c.label)
             .slice(0, 8),
           trackers: extras.brand.trackers,
+          competitors: extras.brand.competitors.map((c) => ({
+            name: c.name,
+            website: c.website,
+            websiteScore: c.score ?? undefined,
+            rating: c.rating ?? undefined,
+            reviews: c.reviews,
+            services: c.services.slice(0, 4),
+          })),
+          competitorGaps: competitorGaps(extras.brand),
           github: extras.brand.githubData
             ? {
                 stars: extras.brand.githubData.stars,
