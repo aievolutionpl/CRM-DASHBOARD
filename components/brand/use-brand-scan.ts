@@ -19,14 +19,18 @@ export function useBrandScan(notify: (text: string) => void) {
   const [step, setStep] = useState(0);
   const [error, setError] = useState("");
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const request = useRef<AbortController | null>(null);
   useEffect(
     () => () => {
       if (timer.current) clearInterval(timer.current);
+      request.current?.abort();
     },
     [],
   );
   async function scan(website: string, github: string) {
     if (busy) return;
+    const controller = new AbortController();
+    request.current = controller;
     setBusy(true);
     setError("");
     setStep(0);
@@ -43,10 +47,12 @@ export function useBrandScan(notify: (text: string) => void) {
           ...(await authHeaders()),
         },
         body: JSON.stringify({ website, github }),
+        signal: controller.signal,
       });
       const result = await r
         .json()
         .catch(() => ({ error: `HTTP ${r.status}` }));
+      if (controller.signal.aborted) return;
       if (!r.ok) throw Error(result.error || "Nie udało się przeskanować.");
       const brand = { ...(result.brand as BrandProfile), applied: true };
       const previous = useCrm.getState().brand;
@@ -67,13 +73,14 @@ export function useBrandScan(notify: (text: string) => void) {
       );
       return brand;
     } catch (e) {
+      if (controller.signal.aborted) return;
       const message =
         e instanceof Error ? e.message : "Nie udało się przeskanować.";
       setError(message);
       notify(message);
     } finally {
       if (timer.current) clearInterval(timer.current);
-      setBusy(false);
+      if (!controller.signal.aborted) setBusy(false);
     }
   }
   return { scan, busy, step, error };

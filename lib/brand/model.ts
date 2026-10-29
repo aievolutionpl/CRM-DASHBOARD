@@ -346,7 +346,6 @@ export function readablePrimary(value: string) {
 export function brandTheme(brand: Pick<BrandProfile, "colors">) {
   const primary = readablePrimary(brand.colors.primary);
   const shades = scale(primary);
-  const accent = scale(brand.colors.accent);
   const { h, c } = toOklch(primary);
   const vars: Record<string, string> = {
     "--primary": primary,
@@ -356,7 +355,7 @@ export function brandTheme(brand: Pick<BrandProfile, "colors">) {
     "--brand-hero-a": fromOklch(0.5, Math.max(c, 0.03), h),
     "--brand-hero-b": fromOklch(0.33, Math.max(c, 0.03) * 0.75, h),
     "--brand-hero-c": fromOklch(0.2, Math.max(c, 0.03) * 0.45, h),
-    "--brand-accent": accent[500],
+    "--brand-accent": brand.colors.accent,
   };
   for (const shade of SHADES) {
     vars[`--brand-${shade}`] = shades[shade];

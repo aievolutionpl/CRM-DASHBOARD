@@ -1,5 +1,5 @@
 import "server-only";
-import { readPage, websiteUrl } from "../knowledge/research";
+import { fetchPage, readPage, websiteUrl } from "../knowledge/research";
 import { apiJson } from "../integrations/http";
 import { auditScore, extractSite, type SiteFacts } from "./extract";
 import { githubTarget, githubWebsite, summarizeGithub } from "./github";
@@ -75,9 +75,8 @@ async function github(input: string) {
 }
 
 async function website(input: string) {
-  const url = websiteUrl(input);
   const started = Date.now();
-  const html = await readPage(url);
+  const { html, url } = await fetchPage(websiteUrl(input));
   const responseMs = Date.now() - started;
   let css = "";
   const first = extractSite(html, url.href);

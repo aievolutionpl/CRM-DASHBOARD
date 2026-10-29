@@ -207,6 +207,7 @@ test("paleta marki: skala, czytelny kolor główny i zmienne motywu", () => {
   });
   assert.ok(brand.contrast(vars["--primary"], "#ffffff") >= 4.5);
   assert.equal(vars["--color-violet-600"], vars["--brand-600"]);
+  assert.equal(vars["--brand-accent"], "#f59e0b");
   assert.match(vars["--brand-hero-a"], /^#[0-9a-f]{6}$/);
   assert.equal(brand.initials("Kwiaciarnia Róża"), "KR");
   assert.equal(brand.initials(""), "AE");
@@ -369,4 +370,57 @@ test("lejek konwersji i harmonogram zamknięć", () => {
   assert.deepEqual(plain(c.map((b) => b.count)), [1, 1, 1, 0, 1]);
   assert.equal(c[0].overdue, true);
   assert.equal(c[2].weighted, 240);
+});
+
+test("odczyt strony podąża za przekierowaniem i zwraca końcowy adres", async () => {
+  const { EventEmitter } = require("node:events");
+  const visited = [];
+  const https = {
+    request(url, _options, onResponse) {
+      visited.push(url.href);
+      const task = new EventEmitter();
+      task.destroy = () => {};
+      task.end = () => {
+        const response = new EventEmitter();
+        response.resume = () => {};
+        if (url.pathname === "/") {
+          response.statusCode = 301;
+          response.headers = { location: "/firma/" };
+          onResponse(response);
+        } else {
+          response.statusCode = 200;
+          response.headers = { "content-type": "text/html; charset=utf-8" };
+          onResponse(response);
+          response.emit("data", Buffer.from("<html>ok</html>"));
+          response.emit("end");
+        }
+      };
+      return task;
+    },
+  };
+  const dns = { lookup: async () => [{ address: "93.184.216.34", family: 4 }] };
+  const research = load("lib/knowledge/research.ts", {
+    "node:https": https,
+    "node:dns/promises": dns,
+  });
+  const saved = { a: process.env.HTTPS_PROXY, b: process.env.https_proxy };
+  delete process.env.HTTPS_PROXY;
+  delete process.env.https_proxy;
+  try {
+    const page = await research.fetchPage(new URL("https://firma.example.pl/"));
+    assert.equal(page.html, "<html>ok</html>");
+    assert.equal(page.url.href, "https://firma.example.pl/firma/");
+    assert.deepEqual(visited, [
+      "https://firma.example.pl/",
+      "https://firma.example.pl/firma/",
+    ]);
+    const facts = extract.extractSite(
+      '<img class="logo" src="logo.png">',
+      page.url.href,
+    );
+    assert.equal(facts.logo, "https://firma.example.pl/firma/logo.png");
+  } finally {
+    if (saved.a !== undefined) process.env.HTTPS_PROXY = saved.a;
+    if (saved.b !== undefined) process.env.https_proxy = saved.b;
+  }
 });

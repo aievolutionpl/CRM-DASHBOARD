@@ -37,7 +37,7 @@ W Profilu firmy poprawisz nazwę, slogan i opis, wybierzesz kolor główny i akc
 
 ## Weryfikacja
 
-`npm test` (76 testów, w tym parser strony, GitHub, paleta, walidacja, notatka Company Brain, kontekst agenta, lejek i harmonogram), `npm run lint`, `tsc --noEmit`, build SQLite oraz 20 scenariuszy Playwright SQLite (w tym Brand Studio z mockiem skanu: motyw, zapis w bazie, Company Brain, przywrócenie wyglądu, 390 px). Odczyt GitHub sprawdzono na żywym API; parser HTML — na zapisanym HTML prawdziwej polskiej strony firmowej.
+`npm test` (77 testów, w tym parser strony, GitHub, paleta, walidacja, notatka Company Brain, kontekst agenta, lejek, harmonogram i przekierowania), `npm run lint`, `tsc --noEmit`, build SQLite oraz 20 scenariuszy Playwright SQLite (w tym Brand Studio z mockiem skanu: motyw, zapis w bazie, Company Brain, przywrócenie wyglądu, 390 px). Odczyt GitHub sprawdzono na żywym API; parser HTML — na zapisanym HTML prawdziwej polskiej strony firmowej.
 
 ![Pulpit po dopasowaniu do marki](screenshots/brand-dashboard.png)
 

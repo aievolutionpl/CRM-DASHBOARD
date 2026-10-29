@@ -154,7 +154,7 @@ export default function StatsBoard({
       value: formatKpi(k[0]),
       delta: kpiDelta(k[0]),
       icon: "check",
-      color: "#10b981",
+      color: "var(--brand-accent)",
       trend: weeks.map((w) => w.won),
       target: "deals" as Section,
     },
@@ -304,7 +304,7 @@ export default function StatsBoard({
           <BarList
             items={topClients}
             format={money}
-            color="#10b981"
+            color="var(--brand-accent)"
             empty="Dodaj szanse lub zlecenia, aby zobaczyć ranking."
           />
         </Panel>

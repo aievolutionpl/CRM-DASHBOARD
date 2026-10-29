@@ -75,7 +75,7 @@ function ScoreRing({ score }: { score: number | null }) {
         />
         <defs>
           <linearGradient id="crm-score" x1="0" x2="1" y1="0" y2="1">
-            <stop offset="0%" stopColor="#a7f3d0" />
+            <stop offset="0%" stopColor="var(--brand-accent)" />
             <stop offset="100%" stopColor="#c4b5fd" />
           </linearGradient>
         </defs>

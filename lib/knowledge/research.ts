@@ -96,10 +96,14 @@ export function researchLinks(html: string, base: URL) {
   }
   return [...result].slice(0, 4);
 }
-export async function readPage(
+type PageOptions = { types?: RegExp; limit?: number; hops?: number };
+export async function readPage(url: URL, options: PageOptions = {}) {
+  return (await fetchPage(url, options)).html;
+}
+export async function fetchPage(
   url: URL,
-  options: { types?: RegExp; limit?: number; hops?: number } = {},
-): Promise<string> {
+  options: PageOptions = {},
+): Promise<{ html: string; url: URL }> {
   const types = options.types ?? /text\/html/i,
     limit = options.limit ?? 2_000_000,
     hops = options.hops ?? 3;
@@ -143,7 +147,7 @@ export async function readPage(
             reject(e);
             return;
           }
-          readPage(next, { ...options, hops: hops - 1 }).then(resolve, reject);
+          fetchPage(next, { ...options, hops: hops - 1 }).then(resolve, reject);
           return;
         }
         if (
@@ -170,7 +174,7 @@ export async function readPage(
           reject(Error("Przerwano pobieranie strony.")),
         );
         response.on("end", () =>
-          resolve(Buffer.concat(chunks).toString("utf8")),
+          resolve({ html: Buffer.concat(chunks).toString("utf8"), url }),
         );
       },
     );
@@ -185,8 +189,7 @@ export async function readPage(
   });
 }
 export async function researchWebsite(input: string) {
-  const url = websiteUrl(input),
-    html = await readPage(url);
+  const { html, url } = await fetchPage(websiteUrl(input));
   const sources: WebSource[] = [
     {
       id: "S01",
