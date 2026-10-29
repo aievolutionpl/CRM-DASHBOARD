@@ -7,7 +7,7 @@ export function AreaChart({
   points,
   title,
   format = number,
-  color = "#7356ed",
+  color = "var(--brand-500)",
 }: {
   points: ChartPoint[];
   title: string;

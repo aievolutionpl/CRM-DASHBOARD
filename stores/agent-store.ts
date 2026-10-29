@@ -311,7 +311,7 @@ export function executeAction(action: AgentAction): string {
   }
 }
 
-async function authHeaders(): Promise<Record<string, string>> {
+export async function authHeaders(): Promise<Record<string, string>> {
   if (!isCloud()) return {};
   try {
     const { browserSupabase, configured } =
@@ -393,6 +393,7 @@ export async function runAgent(
           context: copilotContext(data, day, {
             automation: crm.automation,
             businessMode: crm.businessMode,
+            brand: crm.brand,
           }),
         }),
       });

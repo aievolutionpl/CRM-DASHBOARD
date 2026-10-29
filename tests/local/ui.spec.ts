@@ -409,3 +409,174 @@ test("agent: długa odpowiedź ma własne przewijanie; błąd API zachowuje szki
     true,
   );
 });
+
+test("Brand Studio: strona + GitHub dopasowują dashboard, zapis w SQLite i Company Brain — mock skanu", async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  const id = await ready(page);
+  const requests: unknown[] = [];
+  await page.route("**/api/brand/scan", async (route) => {
+    requests.push(route.request().postDataJSON());
+    await route.fulfill({
+      json: {
+        brand: {
+          name: "Kwiaciarnia Róża · DEMO",
+          tagline: "Kwiaty, które mówią za Ciebie",
+          description: "Bukiety i dekoracje ślubne w Krakowie.",
+          website: "https://roza.example.pl/",
+          github: "https://github.com/roza-demo",
+          logo: "",
+          icon: "",
+          image: "",
+          colors: {
+            primary: "#e11d48",
+            accent: "#16a34a",
+            palette: ["#e11d48", "#16a34a"],
+          },
+          fonts: ["Playfair Display"],
+          headingFont: "Playfair Display",
+          useFont: false,
+          language: "pl",
+          contact: {
+            emails: ["biuro@roza.example.pl"],
+            phones: ["+48 600 100 200"],
+            address: "ul. Floriańska 1, Kraków",
+            nip: "6761234567",
+            city: "Kraków",
+          },
+          socials: [
+            { network: "Facebook", url: "https://www.facebook.com/roza-demo" },
+          ],
+          keywords: ["Wesela"],
+          services: ["Bukiety okolicznościowe"],
+          technologies: ["WordPress"],
+          trackers: ["Google Analytics 4"],
+          rating: { value: 4.8, count: 127, source: "Google", url: "" },
+          reviews: [
+            {
+              author: "Anna",
+              rating: 5,
+              text: "Piękny bukiet!",
+              source: "Google",
+            },
+          ],
+          audit: {
+            score: 82,
+            responseMs: 410,
+            checks: [
+              {
+                id: "https",
+                label: "Strona działa po HTTPS",
+                ok: true,
+                weight: 2,
+                hint: "",
+              },
+              {
+                id: "sitemap",
+                label: "Mapa witryny sitemap.xml",
+                ok: false,
+                weight: 1,
+                hint: "Dodaj /sitemap.xml.",
+              },
+            ],
+          },
+          githubData: {
+            login: "roza-demo",
+            name: "Róża DEMO",
+            url: "https://github.com/roza-demo",
+            avatar: "",
+            bio: "",
+            location: "Kraków",
+            followers: 3,
+            publicRepos: 2,
+            stars: 38,
+            forks: 6,
+            openIssues: 1,
+            lastPush: "2026-10-20",
+            languages: [
+              { name: "PHP", share: 70 },
+              { name: "CSS", share: 30 },
+            ],
+            topics: [],
+            repos: [
+              {
+                name: "sklep-roza",
+                description: "Sklep",
+                stars: 30,
+                forks: 5,
+                language: "PHP",
+                url: "https://github.com/roza-demo/sklep-roza",
+                pushed: "2026-10-20",
+              },
+            ],
+          },
+          warnings: [],
+          scannedAt: "2026-10-29T10:00:00.000Z",
+          applied: false,
+        },
+      },
+    });
+  });
+  await page
+    .getByPlaceholder("https://twoja-firma.pl")
+    .first()
+    .fill("https://roza.example.pl");
+  await page
+    .getByPlaceholder("https://github.com/twoja-firma")
+    .first()
+    .fill("https://github.com/roza-demo");
+  await page.getByRole("button", { name: "Dopasuj dashboard" }).click();
+  await expect(
+    page.getByRole("button", { name: "Profil firmy Kwiaciarnia Róża · DEMO" }),
+  ).toBeVisible();
+  expect(requests).toEqual([
+    {
+      website: "https://roza.example.pl",
+      github: "https://github.com/roza-demo",
+    },
+  ]);
+  await expect(page.getByText("Dobry", { exact: false }).first()).toBeVisible();
+  const primary = () =>
+    page.evaluate(() =>
+      getComputedStyle(document.documentElement)
+        .getPropertyValue("--primary")
+        .trim(),
+    );
+  expect(await primary()).toBe("#e11d48");
+  await expect(page.getByText("Jak widzą Cię klienci")).toBeVisible();
+  await expect(
+    page.getByText("Zapisano w SQLite", { exact: true }),
+  ).toBeVisible();
+  const saved = await (
+    await page.request.get(`/api/local/workspaces/${id}/data`)
+  ).json();
+  expect(saved.settings.brand.name).toBe("Kwiaciarnia Róża · DEMO");
+  expect(saved.settings.brand.applied).toBe(true);
+  await page.getByRole("button", { name: "Profil firmy", exact: true }).click();
+  await expect(page.getByText("Reputacja klientów")).toBeVisible();
+  await expect(page.getByText("127 opinii · Google")).toBeVisible();
+  await page.getByRole("button", { name: "Zapisz w Company Brain" }).click();
+  await expect(
+    page.getByText("Profil marki zapisany w Company Brain", { exact: false }),
+  ).toBeVisible();
+  const brain = await (
+    await page.request.get(`/api/local/workspaces/${id}/brain`)
+  ).json();
+  const note = brain.documents.find(
+    (d: { title: string }) =>
+      d.title === "Profil marki — Kwiaciarnia Róża · DEMO",
+  );
+  expect(note.content).toContain("Ocena 4.8/5");
+  await page.getByRole("button", { name: "Zapisz w Company Brain" }).click();
+  await expect(
+    page.getByText("Zaktualizowano notatkę profilu marki", { exact: false }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Przywróć domyślny wygląd" }).click();
+  expect(await primary()).toBe("#6842ff");
+  await expect(
+    page.getByRole("button", { name: "Zastosuj branding" }),
+  ).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 900 });
+  await noOverflow(page);
+});

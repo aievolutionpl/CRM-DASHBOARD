@@ -1,3 +1,4 @@
+import type { BrandProfile } from "../brand/model";
 import {
   DEAL_STAGES,
   validEmail,
@@ -125,6 +126,7 @@ Dostępne akcje (pole "type" i parametry):
 - draft_email {contactId, subject, body} — tylko szkic, nic nie jest wysyłane
 - generate_report {kind: executive|sales|activity|services, preset: 7d|30d|month|prev_month|quarter|ytd}
 - schedule_job {name, kind: report|followup|agent, frequency: daily|weekdays|weekly|monthly, time HH:MM, weekday 0-6?, monthDay 1-28?, reportKind?, preset?, prompt? (wymagany dla agent)}
+Pole ownCompany opisuje firmę użytkownika (marka, oferta, ocena strony www, opinie) — wykorzystuj je w rekomendacjach marketingowych i szkicach wiadomości.
 Używaj istniejących identyfikatorów z kontekstu. Nową firmę możesz wskazać w kolejnych akcjach przez companyName.
 Zwróć WYŁĄCZNIE poprawny JSON: {"answer":"odpowiedź w Markdown","actions":[...]} (maks. ${ACTION_LIMIT} akcji, pusta lista gdy nic nie trzeba robić).`;
 
@@ -132,6 +134,7 @@ export type ContextExtras = {
   automation?: Automation;
   marketing?: unknown;
   businessMode?: string;
+  brand?: BrandProfile;
 };
 
 export function copilotContext(
@@ -226,6 +229,33 @@ export function copilotContext(
         }
       : undefined,
     marketing: extras.marketing,
+    ownCompany: extras.brand?.name
+      ? {
+          name: extras.brand.name,
+          tagline: extras.brand.tagline || undefined,
+          description: extras.brand.description.slice(0, 600) || undefined,
+          website: extras.brand.website || undefined,
+          city: extras.brand.contact.city || undefined,
+          services: extras.brand.services.slice(0, 8),
+          keywords: extras.brand.keywords.slice(0, 10),
+          rating: extras.brand.rating ?? undefined,
+          websiteScore: extras.brand.audit.checks.length
+            ? extras.brand.audit.score
+            : undefined,
+          websiteIssues: extras.brand.audit.checks
+            .filter((c) => !c.ok)
+            .map((c) => c.label)
+            .slice(0, 8),
+          trackers: extras.brand.trackers,
+          github: extras.brand.githubData
+            ? {
+                stars: extras.brand.githubData.stars,
+                repos: extras.brand.githubData.publicRepos,
+                languages: extras.brand.githubData.languages.map((l) => l.name),
+              }
+            : undefined,
+        }
+      : undefined,
   };
   let text = JSON.stringify(context);
   if (text.length > 90_000) {

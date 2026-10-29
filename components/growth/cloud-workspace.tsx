@@ -96,6 +96,7 @@ export default function CloudWorkspace({ user }: { user: User }) {
       agentEnabled: false,
       businessMode: "crm",
       automation: emptyAutomation(),
+      brand: undefined,
     });
     let unsubscribe = () => {};
     const save = async () => {
@@ -251,13 +252,13 @@ export default function CloudWorkspace({ user }: { user: User }) {
   }
   return (
     <div className="crm flex-col [&_.crm-main]:ml-0! [&_.crm-sidebar]:sticky! [&_.crm-sidebar]:top-0 [&_.crm-sidebar]:h-screen [&_.crm-sidebar]:self-start">
-      <header className="flex flex-wrap items-center gap-3 border-b border-slate-200 bg-white p-4">
+      <header className="growth-bar">
         <strong>Evolution Growth OS {isSqlite() && "· lokalnie"}</strong>
         <label className="flex max-w-full min-w-0 flex-wrap items-center gap-2">
           Przestrzeń
           <select
             aria-label="Przestrzeń robocza"
-            className="max-w-full min-w-0 rounded-lg border border-slate-200 p-2 sm:max-w-[18em]"
+            className="max-w-full min-w-0 sm:max-w-[18em]"
             value={selected?.id ?? ""}
             disabled={pending || loading}
             onChange={(e) =>
@@ -272,7 +273,10 @@ export default function CloudWorkspace({ user }: { user: User }) {
             ))}
           </select>
         </label>
-        <span role="status" className="crm-muted">
+        <span
+          role="status"
+          className={`rounded-full px-2.5 py-1 font-semibold ${sync === savedLabel ? "bg-emerald-50 text-emerald-700" : /niezapisane|Brak/.test(sync) ? "bg-rose-50 text-rose-700" : "bg-amber-50 text-amber-700"}`}
+        >
           {sync}
         </span>
         {selected && (

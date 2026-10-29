@@ -85,7 +85,7 @@ function ReportView({
   };
   return (
     <article className="report-print crm-card min-w-0 overflow-hidden">
-      <header className="relative overflow-hidden bg-[radial-gradient(120%_160%_at_0%_0%,#5b3bff_0%,#3a22b8_45%,#1c1446_100%)] p-6 text-white sm:p-8">
+      <header className="relative overflow-hidden bg-[radial-gradient(120%_140%_at_0%_0%,var(--brand-hero-a)_0%,var(--brand-hero-b)_45%,var(--brand-hero-c)_100%)] p-6 text-white sm:p-8">
         <div className="pointer-events-none absolute -top-20 -right-16 size-60 rounded-full bg-fuchsia-400/25 blur-3xl" />
         <div className="relative flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">

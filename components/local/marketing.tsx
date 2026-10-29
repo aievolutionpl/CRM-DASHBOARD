@@ -247,7 +247,7 @@ export default function Marketing({
                   label: sourceLabels[s],
                   value: metrics(filtered.filter((r) => r.source === s)).leads,
                   color: [
-                    "#7356ed",
+                    "var(--brand-500)",
                     "#a99aff",
                     "#24b995",
                     "#72a7f3",

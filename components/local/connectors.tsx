@@ -221,7 +221,7 @@ export default function Connectors({
   ].some(show);
   return (
     <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5">
-      <section className="relative overflow-hidden rounded-[26px] bg-[radial-gradient(120%_140%_at_0%_100%,#5b3bff_0%,#2f1d93_45%,#160f38_100%)] p-6 text-white shadow-[0_24px_60px_-28px_#3a22b8] sm:p-8">
+      <section className="relative overflow-hidden rounded-[26px] bg-[radial-gradient(120%_140%_at_0%_0%,var(--brand-hero-a)_0%,var(--brand-hero-b)_45%,var(--brand-hero-c)_100%)] p-6 text-white shadow-[0_24px_60px_-28px_var(--brand-800)] sm:p-8">
         <div className="pointer-events-none absolute -top-24 right-0 size-80 rounded-full bg-cyan-300/15 blur-3xl" />
         <div className="relative grid gap-6 lg:grid-cols-[1fr_auto] lg:items-end">
           <div>

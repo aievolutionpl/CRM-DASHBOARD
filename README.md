@@ -10,7 +10,11 @@ Evolution Growth OS to narzędzie dla lokalnych firm usługowych, małych zespo�
 
 **Przykład:** klient trafia z reklamy, zostawia formularz i dzwoni. W Lead Hub zapisujesz te kontakty przy jednej osobie, dodajesz ofertę, rezerwację, wykonanie pracy i wpłatę. W Company Brain zbierasz ofertę i zasady komunikacji marki. AI Brain pomaga analizować kontekst oraz proponuje zadania i notatki, które zatwierdzasz przed wykonaniem.
 
-Jasny interfejs ze szkłem i miękkimi gradientami, widok mobilny, kwoty w PLN, walidacja NIP oraz polskie daty. **AI Evolution Polska · wersja 0.9.0.** Zalecana edycja lokalna zapisuje dane w SQLite i nie wymaga konta Supabase. Podłączenie AI jest opcjonalne.
+Jasny interfejs ze szkłem i miękkimi gradientami, widok mobilny, kwoty w PLN, walidacja NIP oraz polskie daty. **AI Evolution Polska · wersja 0.10.0.** Zalecana edycja lokalna zapisuje dane w SQLite i nie wymaga konta Supabase. Podłączenie AI jest opcjonalne.
+
+**W 0.10:** **Brand Studio — dashboard dopasowany do Twojej firmy.** Wklej adres strony www i/lub link GitHub: aplikacja pobierze logo, kolory, czcionki, kontakt, social media, ofertę, opinie (schema.org i opcjonalnie Google), audyt strony (17 kontroli SEO i konwersji), wykrytą analitykę oraz statystyki repozytoriów — i przemaluje cały interfejs w barwy marki. Nowe wykresy: **lejek konwersji**, **harmonogram zamknięć** z wartością ważoną i panel **„Jak widzą Cię klienci”**. Agent AI zna profil Twojej firmy. Szczegóły: [docs/BRAND-STUDIO.md](docs/BRAND-STUDIO.md).
+
+![Pulpit dopasowany do marki z Brand Studio](docs/screenshots/brand-dashboard.png)
 
 **W 0.9:** czytelniejszy pulpit z wyborem **6 / 12 miesięcy**, dotykowym wyborem miesiąca i tabelą danych; **zbiorcze odświeżanie statystyk** w Konektorach; **dyktowanie po polsku** w obu czatach agenta. Delikatny shader ożywia wyłącznie nagłówek, a przy ograniczeniu ruchu lub braku WebGPU pozostaje statyczny gradient. Opis zachowania i weryfikacji: [docs/UI-0.9.md](docs/UI-0.9.md). [Nowe screenshoty](#interfejs-09--nowe-screenshoty).
 
@@ -35,6 +39,7 @@ _Działająca aplikacja, lokalny zapis SQLite i zaimportowane dane demonstracyjn
 | **Lead Hub**              | Jedna karta potencjalnego klienta: kontakt, status, źródła, kampanie, UTM, rozmowy, oferty, rezerwacje, realizacje i wpłaty.                                                                        |
 | **CRM i sprzedaż**        | Firmy, kontakty, szanse sprzedaży, etapy, zadania, wyszukiwanie i eksporty.                                                                                                                         |
 | **Firma usługowa**        | Klienci, rezerwacje prac, terminy, przypisanie osoby lub stanowiska, kontrola kolizji i historia realizacji.                                                                                        |
+| **Profil firmy**          | Brand Studio: strona www + GitHub → logo, kolory i czcionka w całym dashboardzie, kontakt, opinie, audyt strony, analityka, repozytoria; zapis do Company Brain.                                    |
 | **Pulpit**                | Wykresy sprzedaży i usług; po imporcie CSV także wyniki marketingu, koszty, leady i wskaźniki kampanii.                                                                                             |
 | **Company Brain**         | Wiedza firmy w Markdown: oferta, marka, marketing, foldery, wikilinki, wersje notatek i eksport do Obsidiana.                                                                                       |
 | **Generator mózgu firmy** | Publiczna strona firmy → szkic wiedzy ze źródłami i pytaniami o braki → podgląd → zatwierdzenie zapisu.                                                                                             |
@@ -122,10 +127,23 @@ Na karcie klienta znajdziesz wszystkie jego rezerwacje i realizacje. W zleceniu 
 
 Terminy wpisujesz jako czas miejscowy **Europe/Warsaw**. To terminarz rezerwacji, bez synchronizacji Google/Outlook i automatycznych przypomnień. Wartość zlecenia oznacza ustaloną wartość usługi; nie potwierdza płatności ani wystawienia faktury.
 
+## Profil firmy: dashboard w barwach Twojej marki
+
+1. Na **Pulpicie** w karcie **Dopasuj dashboard do swojej firmy** (albo w menu **Profil firmy**) wpisz adres strony, np. `https://twoja-firma.pl`, i/lub link GitHub — profil, organizację lub repozytorium.
+2. Kliknij **Dopasuj dashboard**. Po kilku sekundach menu pokazuje Twoje logo i nazwę, a przyciski, wykresy i nagłówek przyjmują kolory marki.
+3. W **Profilu firmy** sprawdź opinie, audyt strony z listą poprawek, wykrytą analitykę i platformę, ofertę, kontakt oraz statystyki GitHub. Popraw nazwę, slogan, kolory lub czcionkę nagłówków.
+4. **Zapisz w Company Brain** zapisuje profil jako notatkę Markdown; **Zapytaj agenta o markę** otwiera agenta, który zna profil firmy.
+
+Opcjonalnie w `.env.local`: `GOOGLE_PLACES_API_KEY` (ocena i recenzje z Map Google) oraz `GITHUB_TOKEN` (wyższy limit API GitHub). Odczyt strony działa bez proxy, tak jak generator Company Brain. Profil zapisuje się w przestrzeni (przeglądarka, SQLite, Supabase — migracja `202610290001_brand_profile.sql`). Szczegóły: [docs/BRAND-STUDIO.md](docs/BRAND-STUDIO.md).
+
+![Profil firmy — Brand Studio](docs/screenshots/brand-studio.png)
+
 ## Pulpit: statystyki, które można sprawdzić
 
 - **Marketing:** trend leadów, wydatków lub przychodu z CSV; wybór okresu i źródła oraz udział kanałów. Brak importu tworzy lukę zamiast wymyślonego zera. Dłuższe zakresy mają do 30 sumowanych przedziałów.
 - **Sprzedaż:** wykres etapów przełączany między PLN i liczbą szans, prognoza ważona oraz udział wygranych i przegranych w zamkniętych rozmowach.
+- **Lejek i prognoza:** konwersja między etapami (Nowa → Rozmowa → Oferta → Wygrana) oraz harmonogram zamknięć otwartych szans z wartością pełną i ważoną, z wyróżnieniem szans po terminie.
+- **Marka:** wynik audytu strony, ocena klientów, GitHub i analityka — po skanie w Profilu firmy.
 - **Usługi:** klienci, aktywne rezerwacje, ich wartość, zakończone realizacje, statusy i plan pracy. Trend 7/30/90 dni liczy aktualnie zakończone prace według daty ich rozpoczęcia. Dni bez realizacji mają wartość zero.
 
 Wskaż punkt wykresu kursorem, dotknięciem lub klawiaturą, aby zobaczyć dokładną wartość. **Dane wykresu** otwierają tabelę liczb. Puste dane pozostają puste. Interfejs działa na telefonie, a efekty szkła mają warianty dla ograniczonej przezroczystości i ruchu.
@@ -151,7 +169,7 @@ Generator korzysta ze struktury przesłanego [COMPANY BRAIN TEMPLATE](docs/templ
 
 **CONFIRMED** oznacza informację znalezioną w odczytanym źródle, a nie akceptację właściciela. **TO CONFIRM** to interpretacja, hipoteza lub propozycja. **MISSING** oznacza brak danych w zebranych stronach. Dynamiczne dane, np. ceny i godziny, trzeba ponownie sprawdzić przed publikacją. Model może się pomylić; podgląd i źródła służą weryfikacji.
 
-Generator zbiera publiczny HTML, bez logowania i wykonywania JavaScript. Wybiera podstrony typu oferta, o nas, kontakt, cennik lub FAQ; nie przegląda całej witryny. Nie wyszukuje zewnętrznych opinii, konkurentów ani statystyk SEO. Nieznane sekcje pozostają oznaczone. Nie podawaj linków zawierających tokeny, login lub parametry. Przekierowania są odrzucane: użyj końcowego adresu widocznego w przeglądarce. Limit strony: 2 MB i 20 sekund; do modelu trafia do 14 tys. znaków tekstu z każdej strony.
+Generator zbiera publiczny HTML, bez logowania i wykonywania JavaScript. Wybiera podstrony typu oferta, o nas, kontakt, cennik lub FAQ; nie przegląda całej witryny. Nie wyszukuje zewnętrznych opinii, konkurentów ani statystyk SEO. Nieznane sekcje pozostają oznaczone. Nie podawaj linków zawierających tokeny, login lub parametry. Odczyt podąża za maksymalnie 3 przekierowaniami HTTPS; każdy adres docelowy jest ponownie sprawdzany (publiczna domena, bez parametrów). Limit strony: 2 MB i 20 sekund; do modelu trafia do 14 tys. znaków tekstu z każdej strony.
 
 Odczyt blokuje prywatne adresy sieciowe i przypina zweryfikowany DNS do połączenia TLS. Przy wykrytym proxy HTTPS informuje o ograniczeniu i nie omija proxy. Strony blokujące automatyczny odczyt lub wymagające JavaScript mogą nie dostarczyć treści — wtedy skorzystaj z importu Markdown.
 
@@ -316,6 +334,8 @@ Cloud zachowuje szkice i program pocztowy. Wysyłka przez globalny Resend jest w
 | Notatka już istnieje             | Edytuj dotychczasową lub zmień jej tytuł; zapis szkicu nie nadpisuje wiedzy  |
 | Konektor wymaga konfiguracji     | Uzupełnij serwerowy `.env.local`, zrestartuj, użyj „Sprawdź odczyt”          |
 | Poczta nie wysyła                | Domena Resend, nadawca, token, uprawnienia, podstawa kontaktu                |
+| Profil firmy bez opinii          | Dodaj `GOOGLE_PLACES_API_KEY` lub dane AggregateRating na stronie            |
+| GitHub: limit zapytań            | Ustaw `GITHUB_TOKEN` (tylko odczyt) w `.env.local` i zrestartuj aplikację    |
 
 ## Rozwój i weryfikacja
 
