@@ -141,7 +141,12 @@ export default function ServiceDashboard({
               label: serviceLabels[status],
               value: totals.jobs.filter((d) => d.service!.status === status)
                 .length,
-              color: ["#b3a0ff", "#7356ed", "#24b995", "#d9deeb"][i],
+              color: [
+                "var(--brand-300)",
+                "var(--brand-500)",
+                "#24b995",
+                "#d9deeb",
+              ][i],
             }))}
           />
         </section>

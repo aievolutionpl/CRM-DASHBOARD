@@ -12,6 +12,7 @@ import {
   type JobRun,
   type ReportRecord,
 } from "@/lib/automation/model";
+import { validateBrand, type BrandProfile } from "@/lib/brand/model";
 import {
   seedData,
   type WorkspaceData,
@@ -27,6 +28,8 @@ type State = WorkspaceData & {
   agentEnabled: boolean;
   businessMode: "crm" | "services";
   automation: Automation;
+  brand?: BrandProfile;
+  setBrand: (brand: BrandProfile | undefined) => void;
   saveJob: (job: Job) => void;
   deleteJob: (id: string) => void;
   addRun: (run: JobRun) => void;
@@ -63,6 +66,8 @@ export const useCrm = create<State>()(
       agentEnabled: false,
       businessMode: "crm",
       automation: emptyAutomation(),
+      brand: undefined,
+      setBrand: (brand) => set({ brand }),
       saveJob: (job) =>
         set((s) => ({
           automation: { ...s.automation, jobs: upsert(s.automation.jobs, job) },
@@ -163,6 +168,13 @@ export const useCrm = create<State>()(
               return emptyAutomation();
             }
           })(),
+          brand: (() => {
+            try {
+              return validateBrand(saved.brand);
+            } catch {
+              return undefined;
+            }
+          })(),
         };
       },
       onRehydrateStorage: () => (_state, error) => {
@@ -182,6 +194,7 @@ export const useCrm = create<State>()(
         agentEnabled: s.agentEnabled,
         businessMode: s.businessMode,
         automation: s.automation,
+        brand: s.brand,
       }),
     },
   ),

@@ -11,6 +11,7 @@ import {
 } from "@/lib/crm/insights";
 import { Icon } from "./ui";
 import BrandAtmosphere from "./brand-atmosphere";
+import { ScanForm } from "../brand/brand-studio";
 
 const tones: Record<InsightTone, string> = {
   red: "bg-rose-500",
@@ -74,7 +75,7 @@ function ScoreRing({ score }: { score: number | null }) {
         />
         <defs>
           <linearGradient id="crm-score" x1="0" x2="1" y1="0" y2="1">
-            <stop offset="0%" stopColor="#a7f3d0" />
+            <stop offset="0%" stopColor="var(--brand-accent)" />
             <stop offset="100%" stopColor="#c4b5fd" />
           </linearGradient>
         </defs>
@@ -99,6 +100,7 @@ function RevenueChart({
   const [hover, setHover] = useState<number | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const max = Math.max(1, ...months.map((m) => m.won + m.forecast));
+  const empty = months.every((m) => !m.won && !m.forecast);
   const current = today().slice(0, 7);
   const active =
     hover ?? months.findIndex((m) => m.key === (selected ?? current));
@@ -129,9 +131,14 @@ function RevenueChart({
         </div>
       </div>
       <div
-        className="flex h-44 items-end gap-2 sm:gap-3"
+        className="relative flex h-44 items-end gap-2 bg-[repeating-linear-gradient(to_top,#eef0f6_0,#eef0f6_1px,transparent_1px,transparent_25%)] sm:gap-3"
         onMouseLeave={() => setHover(null)}
       >
+        {empty && (
+          <p className="pointer-events-none absolute inset-x-0 top-1/3 text-center text-sm text-slate-400">
+            Brak wygranych i prognoz w tym okresie — dodaj szanse sprzedaży.
+          </p>
+        )}
         {months.map((m, i) => (
           <button
             key={m.key}
@@ -176,12 +183,18 @@ export default function CommandCenter({
   navigate,
   askAgent,
   serviceMode,
+  notify,
+  readOnly,
 }: {
   navigate: (section: Section) => void;
   askAgent: (prompt: string) => void;
   serviceMode: boolean;
+  notify: (text: string) => void;
+  readOnly: boolean;
 }) {
   const s = useCrm();
+  const brandName = s.brand?.applied ? s.brand.name : "";
+  const blank = !s.firms.length && !s.deals.length && !s.tasks.length;
   const day = today();
   const data = useMemo(
     () => ({
@@ -245,7 +258,7 @@ export default function CommandCenter({
   };
   return (
     <div className="mb-6 grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5">
-      <section className="crm-command-hero relative overflow-hidden rounded-[26px] bg-[radial-gradient(120%_140%_at_0%_0%,#5b3bff_0%,#3a22b8_38%,#1c1446_100%)] p-6 text-white shadow-[0_24px_60px_-28px_#3a22b8] sm:p-8">
+      <section className="crm-command-hero relative overflow-hidden rounded-[26px] bg-[radial-gradient(120%_140%_at_0%_0%,var(--brand-hero-a)_0%,var(--brand-hero-b)_45%,var(--brand-hero-c)_100%)] p-6 text-white shadow-[0_24px_60px_-28px_var(--brand-800)] sm:p-8">
         <BrandAtmosphere />
         <div className="pointer-events-none absolute -top-24 -right-20 size-72 rounded-full bg-fuchsia-400/25 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-28 left-1/3 size-72 rounded-full bg-cyan-300/15 blur-3xl" />
@@ -255,10 +268,13 @@ export default function CommandCenter({
               Centrum dowodzenia · {dateLabel}
             </span>
             <h2 className="mt-2 text-[28px]! leading-tight font-bold tracking-tight text-white! sm:text-[34px]!">
-              {greeting()}!{" "}
-              {list[0]?.tone === "green"
-                ? "Wszystko idzie zgodnie z planem."
-                : "Oto co dziś wymaga uwagi."}
+              {greeting()}
+              {brandName ? `, ${brandName}` : ""}!{" "}
+              {blank
+                ? "Zacznijmy od pierwszych klientów."
+                : list[0]?.tone === "green"
+                  ? "Wszystko idzie zgodnie z planem."
+                  : "Oto co dziś wymaga uwagi."}
             </h2>
             <form
               className="mt-5 flex max-w-2xl items-center gap-2 rounded-2xl border border-white/15 bg-white/10 p-1.5 pl-4 backdrop-blur-md focus-within:border-white/40"
@@ -311,6 +327,30 @@ export default function CommandCenter({
           </div>
         </div>
       </section>
+      {!s.brand && !readOnly && (
+        <section className="crm-card relative overflow-hidden border-violet-200! bg-[linear-gradient(120deg,#fff,var(--brand-50))]! p-5 sm:p-6">
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.6fr)] lg:items-center">
+            <div className="flex items-start gap-3">
+              <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-violet-600 text-white">
+                <Icon name="palette" size={20} />
+              </span>
+              <div>
+                <span className="crm-eyebrow">NOWOŚĆ · BRAND STUDIO</span>
+                <h3 className="mt-1 text-base! leading-snug">
+                  Dopasuj dashboard do swojej firmy
+                </h3>
+                <p className="mt-1 text-xs leading-relaxed text-slate-500">
+                  Wklej stronę www i/lub GitHub — pobierzemy logo, kolory,
+                  opinie, audyt strony i statystyki repozytoriów.
+                </p>
+              </div>
+            </div>
+            <div className="text-slate-700 [&_button]:bg-violet-600! [&_button]:text-white! [&_input]:text-slate-800! [&_label>span]:border-slate-200! [&_label>span]:bg-white!">
+              <ScanForm notify={notify} compact />
+            </div>
+          </div>
+        </section>
+      )}
       <div className="grid gap-5 xl:grid-cols-[1.35fr_1fr]">
         <section className="crm-card p-6">
           <div className="mb-5 flex flex-wrap items-start justify-between gap-4">

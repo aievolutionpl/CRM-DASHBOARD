@@ -4,8 +4,22 @@ import { useCrm } from "@/stores/crm-store";
 import { money, offsetDate, today, type Section } from "@/lib/crm/model";
 import { generateReport, kpiDelta, formatKpi } from "@/lib/reports/generate";
 import { scheduleLabel, jobKindLabels } from "@/lib/automation/model";
-import { pipelineStats } from "@/lib/crm/insights";
-import { BarList, Donut, Heatmap, KpiTile, Panel, Columns } from "./kit";
+import {
+  closingSchedule,
+  funnelConversion,
+  pipelineStats,
+} from "@/lib/crm/insights";
+import {
+  BarList,
+  Donut,
+  Funnel,
+  Heatmap,
+  KpiTile,
+  Panel,
+  Columns,
+  Schedule,
+} from "./kit";
+import BrandPresence from "../brand/brand-presence";
 import { Icon } from "../crm/ui";
 
 const count = (v: number) =>
@@ -47,6 +61,9 @@ export default function StatsBoard({
     [data, day],
   );
   const stats = useMemo(() => pipelineStats(data), [data]);
+  const conversion = useMemo(() => funnelConversion(data), [data]);
+  const schedule = useMemo(() => closingSchedule(data, day), [data, day]);
+  const brand = s.brand;
   const weeks = useMemo(() => {
     const result: { label: string; won: number; tasks: number }[] = [];
     for (let i = 7; i >= 0; i--) {
@@ -137,7 +154,7 @@ export default function StatsBoard({
       value: formatKpi(k[0]),
       delta: kpiDelta(k[0]),
       icon: "check",
-      color: "#10b981",
+      color: "var(--brand-accent)",
       trend: weeks.map((w) => w.won),
       target: "deals" as Section,
     },
@@ -147,7 +164,7 @@ export default function StatsBoard({
           value: formatKpi(k[1]),
           delta: kpiDelta(k[1]),
           icon: "deals",
-          color: "#7356ed",
+          color: "var(--brand-500)",
           target: "deals" as Section,
         }
       : {
@@ -155,7 +172,7 @@ export default function StatsBoard({
           value: money(stats.forecast),
           hint: `${stats.open} otwartych szans`,
           icon: "dashboard",
-          color: "#7356ed",
+          color: "var(--brand-500)",
           target: "deals" as Section,
         },
     serviceMode
@@ -226,53 +243,105 @@ export default function StatsBoard({
         ))}
       </div>
       <div className="grid gap-5 lg:grid-cols-3">
-        <Panel
-          eyebrow={serviceMode ? "ZLECENIA" : "LEJEK"}
-          title={
-            serviceMode ? "Zlecenia według statusu" : "Wartość według etapu"
-          }
-          action={
-            <button
-              className="crm-text-button"
-              onClick={() => navigate("deals")}
-            >
-              Otwórz <Icon name="arrow" size={14} />
-            </button>
-          }
-        >
-          <BarList items={funnel} format={serviceMode ? count : money} />
-        </Panel>
-        <Panel eyebrow="ZADANIA" title="Status planu działania">
-          <Donut
-            center={count(open.length)}
-            caption="otwartych"
-            segments={[
-              { label: "Zaległe", value: overdue, color: "#f43f5e" },
-              { label: "Na 7 dni", value: dueSoon, color: "#f59e0b" },
-              {
-                label: "Później",
-                value: open.length - overdue - dueSoon,
-                color: "#a99bff",
-              },
-              {
-                label: "Wykonane",
-                value: data.tasks.length - open.length,
-                color: "#10b981",
-              },
-            ]}
-          />
-        </Panel>
+        {serviceMode ? (
+          <Panel
+            eyebrow="ZLECENIA"
+            title="Zlecenia według statusu"
+            action={
+              <button
+                className="crm-text-button"
+                onClick={() => navigate("deals")}
+              >
+                Otwórz <Icon name="arrow" size={14} />
+              </button>
+            }
+          >
+            <BarList items={funnel} format={count} />
+          </Panel>
+        ) : (
+          <Panel
+            eyebrow="LEJEK KONWERSJI"
+            title="Jak szanse przechodzą przez etapy"
+            action={
+              <button
+                className="crm-text-button"
+                onClick={() => navigate("deals")}
+              >
+                Otwórz <Icon name="arrow" size={14} />
+              </button>
+            }
+          >
+            <Funnel stages={conversion} format={money} />
+          </Panel>
+        )}
+        {serviceMode ? (
+          <Panel eyebrow="ZADANIA" title="Status planu działania">
+            <Donut
+              center={count(open.length)}
+              caption="otwartych"
+              segments={[
+                { label: "Zaległe", value: overdue, color: "#f43f5e" },
+                { label: "Na 7 dni", value: dueSoon, color: "#f59e0b" },
+                {
+                  label: "Później",
+                  value: open.length - overdue - dueSoon,
+                  color: "var(--brand-300)",
+                },
+                {
+                  label: "Wykonane",
+                  value: data.tasks.length - open.length,
+                  color: "#10b981",
+                },
+              ]}
+            />
+          </Panel>
+        ) : (
+          <Panel eyebrow="PROGNOZA" title="Kiedy zamkniesz otwarte szanse">
+            <Schedule buckets={schedule} format={money} />
+          </Panel>
+        )}
         <Panel eyebrow="KLIENCI" title="Najwięksi klienci (wartość)">
           <BarList
             items={topClients}
             format={money}
-            color="#10b981"
+            color="var(--brand-accent)"
             empty="Dodaj szanse lub zlecenia, aby zobaczyć ranking."
           />
         </Panel>
       </div>
-      <div className="grid gap-5 xl:grid-cols-[1.2fr_1fr_1fr]">
-        <Panel eyebrow="AKTYWNOŚĆ · 12 TYGODNI" title="Mapa aktywności zespołu">
+      <div className="grid gap-5 xl:grid-cols-3">
+        {brand?.name && <BrandPresence brand={brand} navigate={navigate} />}
+        {!serviceMode && (
+          <Panel eyebrow="ZADANIA" title="Status planu działania">
+            <Donut
+              center={count(open.length)}
+              caption="otwartych"
+              segments={[
+                { label: "Zaległe", value: overdue, color: "#f43f5e" },
+                { label: "Na 7 dni", value: dueSoon, color: "#f59e0b" },
+                {
+                  label: "Później",
+                  value: open.length - overdue - dueSoon,
+                  color: "var(--brand-300)",
+                },
+                {
+                  label: "Wykonane",
+                  value: data.tasks.length - open.length,
+                  color: "#10b981",
+                },
+              ]}
+            />
+          </Panel>
+        )}
+        <Panel
+          eyebrow="AKTYWNOŚĆ · 12 TYGODNI"
+          className={
+            ["xl:col-span-3", "xl:col-span-2", ""][
+              Number(!!brand?.name) + Number(!serviceMode)
+            ]
+          }
+          title="Mapa aktywności zespołu"
+        >
           <Heatmap
             days={heat}
             title="Aktywność: zadania, wiadomości, nowe firmy i zlecenia"
@@ -283,9 +352,12 @@ export default function StatsBoard({
               format={count}
               height={90}
               color="#f59e0b"
+              empty="Brak zadań w ostatnich 8 tygodniach — zaplanuj pierwsze."
             />
           </div>
         </Panel>
+      </div>
+      <div className="grid gap-5 lg:grid-cols-2">
         <Panel
           eyebrow="HARMONOGRAM"
           title="Najbliższe automatyzacje"

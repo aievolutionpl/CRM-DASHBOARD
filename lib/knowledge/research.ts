@@ -96,7 +96,17 @@ export function researchLinks(html: string, base: URL) {
   }
   return [...result].slice(0, 4);
 }
-async function readPage(url: URL): Promise<string> {
+type PageOptions = { types?: RegExp; limit?: number; hops?: number };
+export async function readPage(url: URL, options: PageOptions = {}) {
+  return (await fetchPage(url, options)).html;
+}
+export async function fetchPage(
+  url: URL,
+  options: PageOptions = {},
+): Promise<{ html: string; url: URL }> {
+  const types = options.types ?? /text\/html/i,
+    limit = options.limit ?? 2_000_000,
+    hops = options.hops ?? 3;
   // Do not silently bypass a managed HTTP proxy/network policy.
   if (process.env.HTTPS_PROXY || process.env.https_proxy)
     throw Error(
@@ -113,7 +123,7 @@ async function readPage(url: URL): Promise<string> {
         method: "GET",
         headers: {
           "User-Agent": "Evolution-Growth-OS/0.2 CompanyBrain",
-          Accept: "text/html",
+          Accept: types.source.includes("css") ? "text/css" : "text/html",
           "Accept-Encoding": "identity",
         },
         lookup: (_host, options, cb) =>
@@ -123,9 +133,26 @@ async function readPage(url: URL): Promise<string> {
         signal: AbortSignal.timeout(20000),
       },
       (response) => {
+        const location = response.headers.location;
+        if (
+          hops > 0 &&
+          [301, 302, 303, 307, 308].includes(response.statusCode ?? 0) &&
+          location
+        ) {
+          response.resume();
+          let next: URL;
+          try {
+            next = websiteUrl(new URL(location, url).href);
+          } catch (e) {
+            reject(e);
+            return;
+          }
+          fetchPage(next, { ...options, hops: hops - 1 }).then(resolve, reject);
+          return;
+        }
         if (
           response.statusCode !== 200 ||
-          !/text\/html/i.test(String(response.headers["content-type"]))
+          !types.test(String(response.headers["content-type"]))
         ) {
           response.resume();
           reject(
@@ -139,15 +166,15 @@ async function readPage(url: URL): Promise<string> {
         let length = 0;
         response.on("data", (chunk: Buffer) => {
           length += chunk.length;
-          if (length > 2_000_000)
-            task.destroy(Error("Strona przekracza limit 2 MB."));
+          if (length > limit)
+            task.destroy(Error("Strona przekracza dozwolony rozmiar."));
           else chunks.push(chunk);
         });
         response.on("error", () =>
           reject(Error("Przerwano pobieranie strony.")),
         );
         response.on("end", () =>
-          resolve(Buffer.concat(chunks).toString("utf8")),
+          resolve({ html: Buffer.concat(chunks).toString("utf8"), url }),
         );
       },
     );
@@ -162,8 +189,7 @@ async function readPage(url: URL): Promise<string> {
   });
 }
 export async function researchWebsite(input: string) {
-  const url = websiteUrl(input),
-    html = await readPage(url);
+  const { html, url } = await fetchPage(websiteUrl(input));
   const sources: WebSource[] = [
     {
       id: "S01",

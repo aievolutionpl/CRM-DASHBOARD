@@ -220,3 +220,51 @@ export function healthScore(data: WorkspaceData, today: string) {
   if (!data.deals.length && !data.firms.length) return null;
   return Math.max(0, Math.min(100, score));
 }
+
+const FUNNEL = ["Nowa", "Rozmowa", "Oferta", "Wygrana"] as const;
+export function funnelConversion(data: WorkspaceData) {
+  const sales = data.deals.filter((d) => !d.service);
+  const reached = (index: number) =>
+    sales.filter((d) =>
+      d.stage === "Przegrana"
+        ? index === 0
+        : FUNNEL.indexOf(d.stage as (typeof FUNNEL)[number]) >= index,
+    );
+  return FUNNEL.map((label, i) => {
+    const list = reached(i),
+      previous = i ? reached(i - 1).length : list.length;
+    return {
+      label,
+      count: list.length,
+      value: list.reduce((s, d) => s + d.value, 0),
+      rate: previous ? Math.round((list.length / previous) * 100) : null,
+    };
+  });
+}
+
+export function closingSchedule(data: WorkspaceData, today: string) {
+  const buckets = [
+    { label: "Po terminie", from: -Infinity, to: -1 },
+    { label: "0–30 dni", from: 0, to: 30 },
+    { label: "31–60 dni", from: 31, to: 60 },
+    { label: "61–90 dni", from: 61, to: 90 },
+    { label: "> 90 dni", from: 91, to: Infinity },
+  ];
+  const day = Date.parse(`${today}T12:00:00Z`);
+  const open = openSales(data);
+  return buckets.map((b) => {
+    const list = open.filter((d) => {
+      const diff = Math.round(
+        (Date.parse(`${d.closeDate}T12:00:00Z`) - day) / 86400000,
+      );
+      return diff >= b.from && diff <= b.to;
+    });
+    return {
+      label: b.label,
+      count: list.length,
+      value: list.reduce((s, d) => s + d.value, 0),
+      weighted: list.reduce((s, d) => s + (d.value * d.probability) / 100, 0),
+      overdue: b.to < 0,
+    };
+  });
+}

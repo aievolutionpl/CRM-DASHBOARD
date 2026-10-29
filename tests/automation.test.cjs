@@ -68,6 +68,7 @@ test("zadania harmonogramu są walidowane i wykrywane jako zaległe", () => {
 
 test("raport liczy KPI, porównanie z poprzednim okresem i eksporty", () => {
   const data = model.seedData();
+  data.deals[0].closeDate = "2026-10-20";
   data.deals[4].closeDate = "2026-10-01";
   data.deals.push({
     id: "old",

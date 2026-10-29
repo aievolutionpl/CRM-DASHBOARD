@@ -21,6 +21,7 @@ export const SECTIONS = [
   "ai",
   "reports",
   "automations",
+  "brand",
 ] as const;
 export type Section = (typeof SECTIONS)[number];
 export type Firm = {

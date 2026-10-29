@@ -5,6 +5,7 @@ import {
   validateAutomation,
   type Automation,
 } from "../automation/model";
+import { validateBrand, type BrandProfile } from "../brand/model";
 export const ROLES = ["owner", "admin", "marketer", "viewer"] as const;
 export type Role = (typeof ROLES)[number];
 export type WorkspaceInfo = { id: string; name: string; role: Role };
@@ -14,6 +15,7 @@ export type Preferences = {
   agentEnabled: boolean;
   businessMode?: "crm" | "services";
   automation?: Automation;
+  brand?: BrandProfile;
 };
 export type Snapshot = {
   data: WorkspaceData;
@@ -54,6 +56,7 @@ export function validateSnapshot(value: unknown): Snapshot {
       agentEnabled: v.settings.agentEnabled,
       businessMode: v.settings.businessMode ?? "crm",
       automation: validateAutomation(v.settings.automation),
+      brand: validateBrand(v.settings.brand),
     },
     revision: v.revision,
   };
@@ -71,6 +74,7 @@ export function snapshot(
       agentEnabled: state.agentEnabled,
       businessMode: state.businessMode ?? "crm",
       automation: state.automation ?? emptyAutomation(),
+      brand: state.brand,
     },
     data: {
       firms: state.firms,

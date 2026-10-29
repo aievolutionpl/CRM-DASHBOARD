@@ -5,3 +5,4 @@ require("./agent.test.cjs");
 require("./google-oauth.test.cjs");
 require("./automation.test.cjs");
 require("./batch.test.cjs");
+require("./brand.test.cjs");

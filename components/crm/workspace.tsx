@@ -34,6 +34,9 @@ import Reports from "../reports/reports";
 import Automations from "../automation/automations";
 import Copilot from "../copilot/copilot";
 import { useScheduler } from "@/stores/scheduler";
+import BrandStudio from "../brand/brand-studio";
+import { BrandFont, BrandLogo, useBrandStyle } from "../brand/theme";
+import { initials } from "@/lib/brand/model";
 const NAV: { id: Section; title: string; description: string }[] = [
   {
     id: "dashboard",
@@ -86,6 +89,12 @@ const NAV: { id: Section; title: string; description: string }[] = [
     description: "Cykliczne raporty, follow-upy i zadania agenta AI.",
   },
   {
+    id: "brand",
+    title: "Profil firmy",
+    description:
+      "Branding, opinie, audyt strony i GitHub — dashboard dopasowany do Twojej marki.",
+  },
+  {
     id: "brain",
     title: "Company Brain",
     description: "Wiedza firmy w notatkach Markdown i linkach.",
@@ -123,6 +132,21 @@ export default function Workspace({
   const cloudName = cloud?.name;
   const readOnly = cloud?.readOnly;
   const s = useCrm();
+  const brand = s.brand;
+  const branded = Boolean(brand?.applied && brand.name);
+  const brandStyle = useBrandStyle(brand);
+  useEffect(() => {
+    const root = document.documentElement;
+    const entries = Object.entries(brandStyle ?? {}) as [string, string][];
+    for (const [key, value] of entries) root.style.setProperty(key, value);
+    if (brand?.applied && brand.useFont && brand.headingFont)
+      root.setAttribute("data-brand-font", "");
+    else root.removeAttribute("data-brand-font");
+    return () => {
+      for (const [key] of entries) root.style.removeProperty(key);
+      root.removeAttribute("data-brand-font");
+    };
+  }, [brandStyle, brand?.applied, brand?.useFont, brand?.headingFont]);
   const serviceMode = s.businessMode === "services";
   const navigation = NAV.map((n) =>
     serviceMode && n.id === "companies"
@@ -271,22 +295,36 @@ export default function Workspace({
   const current = navigation.find((n) => n.id === section)!;
   const nav = (
     <>
-      <div className="crm-brand">
-        <Image
-          src="/assets/brand/evolution-mark.png"
-          alt=""
-          width={44}
-          height={44}
-        />
-        <div>
-          <strong>
-            Evolution
-            <br />
-            <span>Growth OS</span>
-          </strong>
-          <small>AI EVOLUTION POLSKA</small>
+      {branded ? (
+        <button
+          className="crm-brand w-full text-left"
+          onClick={() => navigate("brand")}
+          aria-label={`Profil firmy ${brand!.name}`}
+        >
+          <BrandLogo brand={brand} size={44} />
+          <div className="crm-brand-name">
+            <strong>{brand!.name}</strong>
+            <small>GROWTH OS · {brand!.contact.city || "PROFIL MARKI"}</small>
+          </div>
+        </button>
+      ) : (
+        <div className="crm-brand">
+          <Image
+            src="/assets/brand/evolution-mark.png"
+            alt=""
+            width={44}
+            height={44}
+          />
+          <div>
+            <strong>
+              Evolution
+              <br />
+              <span>Growth OS</span>
+            </strong>
+            <small>AI EVOLUTION POLSKA</small>
+          </div>
         </div>
-      </div>
+      )}
       <div className="crm-workspace-label">
         <span className="crm-workspace-dot" />
         {cloud?.name || "Mój obszar pracy"}
@@ -374,16 +412,28 @@ export default function Workspace({
           ))}
         <div className="crm-nav-caption">WIEDZA I DANE</div>
         {navigation
-          .filter((n) => ["brain", "connectors"].includes(n.id))
+          .filter((n) => ["brand", "brain", "connectors"].includes(n.id))
           .map((n) => (
             <button
               key={n.id}
               aria-label={n.title}
               className={`crm-nav-item ${section === n.id ? "active" : ""}`}
               onClick={() => navigate(n.id)}
+              aria-current={section === n.id ? "page" : undefined}
             >
-              <Icon name={n.id === "brain" ? "companies" : "settings"} />
+              <Icon
+                name={
+                  n.id === "brand"
+                    ? "palette"
+                    : n.id === "brain"
+                      ? "companies"
+                      : "link"
+                }
+              />
               <span>{n.title}</span>
+              {n.id === "brand" && !brand && (
+                <span className="crm-mini-badge">NOWE</span>
+              )}
             </button>
           ))}
       </nav>
@@ -437,6 +487,7 @@ export default function Workspace({
     );
   return (
     <div className="crm">
+      <BrandFont brand={brand} />
       <aside className="crm-sidebar">{nav}</aside>
       <div className="crm-main">
         <header className="crm-topbar">
@@ -473,14 +524,16 @@ export default function Workspace({
               onClick={() => navigate("settings")}
               aria-label="Ustawienia mojego obszaru"
             >
-              AE
+              {branded ? initials(brand!.name) : "AE"}
             </button>
           </div>
         </header>
         <main className="crm-content" inert={readOnly && section !== "leads"}>
           <div className="crm-page-heading">
             <div>
-              <span className="crm-eyebrow">EVOLUTION GROWTH OS</span>
+              <span className="crm-eyebrow">
+                {branded ? `${brand!.name} · GROWTH OS` : "EVOLUTION GROWTH OS"}
+              </span>
               <h1>{current.title}</h1>
               <p>{current.description}</p>
             </div>
@@ -517,6 +570,7 @@ export default function Workspace({
               "ai",
               "reports",
               "automations",
+              "brand",
             ].includes(section) && (
               <div className="crm-card crm-search-results">
                 <h3>Wyniki wyszukiwania</h3>
@@ -598,6 +652,8 @@ export default function Workspace({
                 navigate={navigate}
                 askAgent={askAgent}
                 serviceMode={serviceMode}
+                notify={notify}
+                readOnly={!!readOnly}
               />
               <StatsBoard navigate={navigate} serviceMode={serviceMode} />
             </>
@@ -678,6 +734,14 @@ export default function Workspace({
               )}
             </>
           )}
+          {section === "brand" && (
+            <BrandStudio
+              notify={notify}
+              navigate={navigate}
+              readOnly={!!readOnly}
+              workspace={cloud?.id}
+            />
+          )}
           {section === "reports" && (
             <Reports
               notify={notify}
@@ -736,7 +800,11 @@ export default function Workspace({
             />
           )}
           <footer className="crm-footer">
-            <span>Stworzone dla dobrych relacji.</span>
+            <span>
+              {branded
+                ? `${brand!.name} · napędzane przez Evolution Growth OS`
+                : "Stworzone dla dobrych relacji."}
+            </span>
             <span>AI Evolution Polska · PLN · Europe/Warsaw</span>
           </footer>
         </main>
