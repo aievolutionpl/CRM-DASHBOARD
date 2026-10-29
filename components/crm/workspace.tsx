@@ -631,6 +631,7 @@ export default function Workspace({
                 query={query}
                 readOnly={!!readOnly}
                 notify={notify}
+                navigate={navigate}
               />
             ) : (
               <section className="crm-card p-6">

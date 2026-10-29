@@ -94,6 +94,7 @@ export type AgentAction =
       closeDate?: string;
     }
   | { type: "draft_email"; contactId: string; subject: string; body: string }
+  | { type: "convert_lead"; leadId: string; name?: string }
   | { type: "generate_report"; kind: ReportKind; preset: ReportPreset }
   | {
       type: "schedule_job";
@@ -124,6 +125,7 @@ Dostępne akcje (pole "type" i parametry):
 - create_deal {name, value (PLN), stage: Nowa|Rozmowa|Oferta|Wygrana|Przegrana, probability 0-100?, closeDate YYYY-MM-DD, companyId? lub companyName?}
 - update_deal {dealId, stage?, value?, probability?, closeDate?}
 - draft_email {contactId, subject, body} — tylko szkic, nic nie jest wysyłane
+- convert_lead {leadId, name?} — przenosi leada z Lead Hub do CRM (firma, kontakt, szansa ze źródłem); tylko leady z inCrm=false
 - generate_report {kind: executive|sales|activity|services, preset: 7d|30d|month|prev_month|quarter|ytd}
 - schedule_job {name, kind: report|followup|agent, frequency: daily|weekdays|weekly|monthly, time HH:MM, weekday 0-6?, monthDay 1-28?, reportKind?, preset?, prompt? (wymagany dla agent)}
 Pole ownCompany opisuje firmę użytkownika (marka, oferta, ocena strony www, opinie) — wykorzystuj je w rekomendacjach marketingowych i szkicach wiadomości.
@@ -135,6 +137,7 @@ export type ContextExtras = {
   marketing?: unknown;
   businessMode?: string;
   brand?: BrandProfile;
+  leads?: unknown;
 };
 
 export function copilotContext(
@@ -229,6 +232,7 @@ export function copilotContext(
         }
       : undefined,
     marketing: extras.marketing,
+    leads: extras.leads,
     ownCompany: extras.brand?.name
       ? {
           name: extras.brand.name,
@@ -422,6 +426,14 @@ export function validateAction(raw: unknown): AgentAction {
         subject: String(a.subject),
         body: String(a.body),
       };
+    case "convert_lead":
+      if (!str(a.leadId, 100) || !optStr(a.name, 200))
+        throw Error("Nieprawidłowy lead do konwersji.");
+      return clean({
+        type: "convert_lead",
+        leadId: String(a.leadId),
+        name: (a.name as string) || undefined,
+      });
     case "generate_report":
       if (
         !REPORT_KINDS.includes(a.kind as ReportKind) ||
@@ -565,6 +577,12 @@ export function describeAction(a: AgentAction, data: WorkspaceData) {
         detail: `Do ${c?.name ?? "nieznany kontakt"} · tylko szkic, bez wysyłki`,
       };
     }
+    case "convert_lead":
+      return {
+        icon: "contacts",
+        title: `Konwertuj leada do CRM: ${a.name ?? a.leadId}`,
+        detail: "Firma, kontakt i szansa ze źródłem leada — bez duplikatów",
+      };
     case "generate_report":
       return {
         icon: "file",
@@ -601,13 +619,62 @@ const CITY_FORMS: Record<string, string> = {
   opola: "Opole",
 };
 
+export type LeadDigest = {
+  total: number;
+  leads: {
+    id: string;
+    name: string;
+    status: string;
+    source?: string;
+    campaign?: string;
+    estimatedValue: number;
+    inCrm: boolean;
+  }[];
+};
+
 export function builtinCopilot(
   prompt: string,
   data: WorkspaceData,
   today: string,
   businessMode = "crm",
+  leads?: LeadDigest,
 ) {
   const q = prompt.toLowerCase();
+  if (leads && /lead/.test(q)) {
+    const open = leads.leads.filter(
+      (l) => !l.inCrm && !["lost"].includes(l.status),
+    );
+    const convert = /konwert|przenie|przerzu|do crm|dodaj do crm/.test(q);
+    const rows = (convert ? open : leads.leads).slice(0, 8);
+    return JSON.stringify({
+      answer: [
+        `**Lead Hub:** ${leads.total} leadów, z czego ${leads.leads.filter((l) => l.inCrm).length} z ostatnich ${leads.leads.length} jest już w CRM.`,
+        rows.length
+          ? [
+              "",
+              "| Lead | Status | Źródło | Wartość | W CRM |",
+              "| --- | --- | --- | --- | --- |",
+              ...rows.map(
+                (l) =>
+                  `| ${l.name} | ${l.status} | ${l.source ?? "—"} | ${pln(l.estimatedValue)} | ${l.inCrm ? "tak" : "nie"} |`,
+              ),
+            ].join("\n")
+          : "\nBrak leadów do pokazania.",
+        convert
+          ? open.length
+            ? `\nProponuję przenieść ${Math.min(open.length, ACTION_LIMIT)} leadów do CRM — zatwierdź akcje poniżej.`
+            : "\nWszystkie aktywne leady są już w CRM."
+          : open.length
+            ? `\n${open.length} leadów czeka na przeniesienie do CRM. Napisz „przenieś leady do CRM”, a przygotuję akcje.`
+            : "",
+      ].join("\n"),
+      actions: convert
+        ? open
+            .slice(0, ACTION_LIMIT)
+            .map((l) => ({ type: "convert_lead", leadId: l.id, name: l.name }))
+        : [],
+    });
+  }
   const addFirm = prompt.match(
     /^\s*(?:dodaj|utwórz|utworz|załóż|zaloz)\s+(?:now[ąa]\s+)?(?:firm[ęe]|klienta)\s+[„"]?(.+?)[”"]?(?:\s+z\s+([\p{Lu}][\p{L}-]+(?:\s+[\p{Lu}][\p{L}-]+)?))?\s*\.?$/iu,
   );

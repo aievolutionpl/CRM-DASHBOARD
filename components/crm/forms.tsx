@@ -71,6 +71,7 @@ export default function EntityForm({
           probability: "30",
           stage: "Nowa",
           closeDate: offsetDate(14),
+          source: "",
         };
       case "task":
         return {
@@ -199,6 +200,7 @@ export default function EntityForm({
           stage === "Wygrana" ? 100 : stage === "Przegrana" ? 0 : probability,
         stage,
         closeDate: text("closeDate"),
+        source: text("source").trim().slice(0, 100) || undefined,
       });
     }
     if (editor.kind === "task") {
@@ -364,6 +366,33 @@ export default function EntityForm({
                 {input("closeDate", "date", true)}
               </Field>
             </div>
+            <Field
+              label="Źródło klienta"
+              hint="Kanał pozyskania — liczymy z niego przychód i ROAS na Pulpicie."
+            >
+              <input
+                list="crm-deal-sources"
+                maxLength={100}
+                placeholder="np. google_ads, polecenie, organic"
+                value={text("source")}
+                onChange={(e) => change("source", e.target.value)}
+              />
+            </Field>
+            <datalist id="crm-deal-sources">
+              {[
+                "google_ads",
+                "microsoft_ads",
+                "meta_ads",
+                "organic",
+                "gbp",
+                "direct",
+                "polecenie",
+                "email",
+                "telefon",
+              ].map((v) => (
+                <option key={v} value={v} />
+              ))}
+            </datalist>
           </>
         )}
         {editor.kind === "task" && (

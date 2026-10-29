@@ -11,7 +11,7 @@ import {
   resolveIdentity,
   LeadError,
 } from "./model";
-import { newLead, addEvent, updateLead } from "./domain";
+import { newLead, addEvent, updateLead, linkCrm } from "./domain";
 import { demoLead } from "./demo";
 import type { LeadRepository } from "./repository";
 const response = (data: unknown, status = 200) =>
@@ -147,6 +147,33 @@ export async function leadHandler(
       const next = addEvent(current, event);
       next.lead.revision = current.lead.revision + 1;
       await repo.write(wid, next, current.lead.revision, false);
+      return response(await repo.read(wid, lid));
+    }
+    if (request.method === "POST" && path.length === 2 && path[1] === "crm") {
+      if (v.revision !== current.lead.revision)
+        throw new LeadError(
+          "Konflikt wersji leada. Odśwież szczegóły przed ponownym zapisem.",
+          409,
+        );
+      const raw = object(v.links);
+      const links: Record<string, string> = {};
+      for (const key of ["company_id", "contact_id", "deal_id"])
+        if (raw[key] !== undefined) {
+          if (
+            typeof raw[key] !== "string" ||
+            !/^[\w-]{1,100}$/.test(raw[key] as string)
+          )
+            throw new LeadError("Nieprawidłowe powiązanie z CRM.");
+          links[key] = raw[key] as string;
+        }
+      if (!links.company_id)
+        throw new LeadError("Powiązanie z CRM wymaga firmy lub klienta.");
+      await repo.write(
+        wid,
+        linkCrm(current, links),
+        current.lead.revision,
+        false,
+      );
       return response(await repo.read(wid, lid));
     }
     if (request.method === "PUT" && path.length === 1) {
