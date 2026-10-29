@@ -144,6 +144,7 @@ Opcjonalnie w `.env.local`: `GOOGLE_PLACES_API_KEY` (ocena i recenzje z Map Goog
 - **Sprzedaż:** wykres etapów przełączany między PLN i liczbą szans, prognoza ważona oraz udział wygranych i przegranych w zamkniętych rozmowach.
 - **Lejek i prognoza:** konwersja między etapami (Nowa → Rozmowa → Oferta → Wygrana) oraz harmonogram zamknięć otwartych szans z wartością pełną i ważoną, z wyróżnieniem szans po terminie.
 - **Marka:** wynik audytu strony, ocena klientów, GitHub i analityka — po skanie w Profilu firmy.
+- **Zwrot z marketingu:** wydatki z importu CSV (i Google Ads w PLN dla dni bez CSV) zestawione z wygranymi szansami i zakończonymi zleceniami według pola „Źródło klienta” — CAC, ROAS liczony z przychodu CRM, koszt leada i otwarty lejek dla każdego kanału. Źródła są normalizowane (np. „Google Ads”, „adwords” → Google Ads; „facebook” → Meta Ads). W trybie przeglądarki i Supabase panel pokazuje przychód według źródła bez wydatków.
 - **Usługi:** klienci, aktywne rezerwacje, ich wartość, zakończone realizacje, statusy i plan pracy. Trend 7/30/90 dni liczy aktualnie zakończone prace według daty ich rozpoczęcia. Dni bez realizacji mają wartość zero.
 
 Wskaż punkt wykresu kursorem, dotknięciem lub klawiaturą, aby zobaczyć dokładną wartość. **Dane wykresu** otwierają tabelę liczb. Puste dane pozostają puste. Interfejs działa na telefonie, a efekty szkła mają warianty dla ograniczonej przezroczystości i ruchu.
