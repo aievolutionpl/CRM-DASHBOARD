@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useCrm } from "@/stores/crm-store";
 import { monitorBrand } from "@/stores/brand-scan";
 import { brandAlerts, type BrandPoint } from "@/lib/brand/model";
-import { newJob } from "@/lib/automation/model";
+import { MAX_JOBS, newJob } from "@/lib/automation/model";
 import { id as newId } from "@/lib/crm/model";
 import { Icon } from "../crm/ui";
 import { Panel } from "../insights/kit";
@@ -89,6 +89,12 @@ export default function BrandHistory({
               className="crm-button"
               disabled={readOnly}
               onClick={() => {
+                if (jobs.length >= MAX_JOBS) {
+                  notify(
+                    `Harmonogram ma już ${MAX_JOBS} zadań. Usuń jedno, aby dodać monitoring marki.`,
+                  );
+                  return;
+                }
                 saveJob(
                   newJob(
                     {

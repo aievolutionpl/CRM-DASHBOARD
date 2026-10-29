@@ -2,18 +2,21 @@
 import {
   brandAlerts,
   toCompetitor,
+  sameBrandTarget,
   validateBrand,
   withHistory,
   type BrandProfile,
 } from "@/lib/brand/model";
 import { useCrm } from "./crm-store";
 import { authHeaders } from "./agent-store";
+import { activeWorkspace } from "./sync";
 
 export async function scanBrandProfile(
   website: string,
   github: string,
   signal?: AbortSignal,
 ) {
+  const workspace = activeWorkspace();
   const r = await fetch("/api/brand/scan", {
     method: "POST",
     cache: "no-store",
@@ -25,19 +28,33 @@ export async function scanBrandProfile(
     signal,
   });
   const result = await r.json().catch(() => ({ error: `HTTP ${r.status}` }));
+  if (activeWorkspace() !== workspace)
+    throw Error(
+      "Przestrzeń została zmieniona w trakcie skanu. Wynik odrzucono — powtórz skan w otwartej przestrzeni.",
+    );
   if (!r.ok) throw Error(result.error || "Nie udało się przeskanować.");
   const brand = validateBrand(result.brand);
   if (!brand) throw Error("Skaner nie zwrócił profilu marki.");
   return brand;
 }
 
-export function applyScannedBrand(scanned: BrandProfile, apply = true) {
+export function applyScannedBrand(
+  scanned: BrandProfile,
+  apply = true,
+  keep?: { website: string; github: string },
+) {
   const previous = useCrm.getState().brand;
   const brand: BrandProfile = withHistory(
-    { ...scanned, applied: apply || (previous?.applied ?? true) },
+    {
+      ...scanned,
+      website: scanned.website || keep?.website || "",
+      github: scanned.github || keep?.github || "",
+      applied: apply || (previous?.applied ?? true),
+    },
     previous,
   );
-  brand.competitors = previous?.competitors ?? [];
+  brand.competitors =
+    previous && sameBrandTarget(brand, previous) ? previous.competitors : [];
   if (previous?.name === brand.name) {
     brand.colors = previous.colors;
     brand.useFont = previous.useFont;
@@ -59,6 +76,7 @@ export async function monitorBrand() {
   const { brand, alerts } = applyScannedBrand(
     await scanBrandProfile(current.website, current.github),
     false,
+    { website: current.website, github: current.github },
   );
   const last = brand.history.at(-1)!;
   const parts = [

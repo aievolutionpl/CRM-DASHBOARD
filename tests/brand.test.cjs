@@ -578,3 +578,49 @@ test("konkurencja: zapis, przewagi konkurentów, notatka i kontekst agenta", () 
   assert.equal(ctx.ownCompany.competitors[0].name, "Kwiatek");
   assert.equal(ctx.ownCompany.competitorGaps.length, 5);
 });
+
+test("historia: nowa firma zaczyna własną serię, spadek oceny o 0,1 jest wykrywany", () => {
+  const a = brand.validateBrand({
+    ...brand.emptyBrand(),
+    name: "A",
+    website: "https://www.firma-a.example.pl/",
+    rating: { value: 4.1, count: 10, source: "Google", url: "" },
+    scannedAt: "2026-10-01T08:00:00.000Z",
+  });
+  const first = brand.withHistory(a);
+  const rescan = brand.withHistory(
+    {
+      ...a,
+      website: "https://firma-a.example.pl/o-nas",
+      rating: { ...a.rating, value: 4.0 },
+      scannedAt: "2026-10-08T08:00:00.000Z",
+    },
+    first,
+  );
+  assert.equal(rescan.history.length, 2);
+  assert.match(brand.brandAlerts(rescan.history)[0], /4\.1 do 4\.0/);
+  const other = brand.withHistory(
+    {
+      ...a,
+      name: "B",
+      website: "https://firma-b.example.pl/",
+      scannedAt: "2026-10-09T08:00:00.000Z",
+    },
+    rescan,
+  );
+  assert.equal(other.history.length, 1);
+  assert.equal(
+    brand.sameBrandTarget(
+      { website: "", github: "https://github.com/Org" },
+      { website: "", github: "https://github.com/org/" },
+    ),
+    true,
+  );
+  assert.equal(
+    brand.sameBrandTarget(
+      { website: "", github: "" },
+      { website: "", github: "" },
+    ),
+    false,
+  );
+});

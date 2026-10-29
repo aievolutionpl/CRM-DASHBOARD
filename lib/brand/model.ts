@@ -460,16 +460,38 @@ export function brandPoint(brand: BrandProfile): BrandPoint {
     issues: brand.audit.checks.filter((c) => !c.ok).length,
   };
 }
+export function brandTarget(brand: Pick<BrandProfile, "website" | "github">) {
+  const host = (u: string) => {
+    try {
+      return new URL(u).hostname.toLowerCase().replace(/^www\./, "");
+    } catch {
+      return "";
+    }
+  };
+  return {
+    site: host(brand.website),
+    github: brand.github.toLowerCase().replace(/\/+$/, ""),
+  };
+}
+export function sameBrandTarget(
+  a: Pick<BrandProfile, "website" | "github">,
+  b: Pick<BrandProfile, "website" | "github">,
+) {
+  const x = brandTarget(a),
+    y = brandTarget(b);
+  return (
+    (!!x.site && x.site === y.site) || (!!x.github && x.github === y.github)
+  );
+}
 export function withHistory(
   next: BrandProfile,
   previous?: BrandProfile,
 ): BrandProfile {
   const point = brandPoint(next);
   const day = point.at.slice(0, 10);
-  const history = [
-    ...(previous?.history ?? []).filter((h) => h.at.slice(0, 10) !== day),
-    point,
-  ]
+  const kept =
+    previous && sameBrandTarget(next, previous) ? previous.history : [];
+  const history = [...kept.filter((h) => h.at.slice(0, 10) !== day), point]
     .sort((a, b) => a.at.localeCompare(b.at))
     .slice(-52);
   return { ...next, history };
@@ -487,7 +509,7 @@ export function brandAlerts(history: BrandPoint[]) {
   if (
     prev.rating !== null &&
     last.rating !== null &&
-    last.rating <= prev.rating - 0.1
+    Math.round(last.rating * 10) <= Math.round(prev.rating * 10) - 1
   )
     alerts.push(
       `ocena spadła z ${prev.rating.toFixed(1)} do ${last.rating.toFixed(1)}`,
