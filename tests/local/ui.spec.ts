@@ -637,3 +637,84 @@ test("Lead Hub → CRM: konwersja tworzy firmę, kontakt i szansę ze źródłem
     page.getByRole("heading", { name: "Szanse sprzedaży", exact: true }),
   ).toBeVisible();
 });
+
+test("Monitoring marki: historia skanów, alert spadku i cotygodniowe zadanie — mock skanu", async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  const id = await ready(page);
+  let score = 90;
+  await page.route("**/api/brand/scan", async (route) => {
+    const value = score;
+    score = 70;
+    await route.fulfill({
+      json: {
+        brand: {
+          name: "Monitoring · DEMO",
+          website: "https://monitoring.example.pl/",
+          colors: { primary: "#0ea5e9", accent: "#f59e0b", palette: [] },
+          rating: {
+            value: value === 90 ? 4.7 : 4.4,
+            count: 40,
+            source: "Google",
+            url: "",
+          },
+          audit: {
+            score: value,
+            responseMs: 300,
+            checks: [
+              {
+                id: "title",
+                label: "Tytuł strony",
+                ok: value === 90,
+                weight: 1,
+                hint: "",
+              },
+            ],
+          },
+          scannedAt:
+            value === 90
+              ? "2026-10-01T08:00:00.000Z"
+              : "2026-10-08T08:00:00.000Z",
+          applied: true,
+        },
+      },
+    });
+  });
+  await page
+    .getByPlaceholder("https://twoja-firma.pl")
+    .first()
+    .fill("https://monitoring.example.pl");
+  await page.getByRole("button", { name: "Dopasuj dashboard" }).click();
+  await expect(
+    page.getByRole("button", { name: "Profil firmy Monitoring · DEMO" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Profil firmy", exact: true }).click();
+  await expect(
+    page.getByText("Jak zmienia się Twoja obecność online"),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Monitoruj co tydzień" }).click();
+  await expect(
+    page.getByRole("button", { name: "Monitoruj co tydzień" }),
+  ).toHaveCount(0);
+  await page.getByRole("button", { name: "Skanuj teraz" }).click();
+  await expect(
+    page
+      .getByRole("alert")
+      .filter({ hasText: "wynik strony spadł z 90 do 70" }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Zapisano w SQLite", { exact: true }),
+  ).toBeVisible();
+  const saved = await (
+    await page.request.get(`/api/local/workspaces/${id}/data`)
+  ).json();
+  expect(
+    saved.settings.brand.history.map((h: { score: number }) => h.score),
+  ).toEqual([90, 70]);
+  expect(
+    saved.settings.automation.jobs.some(
+      (j: { kind: string }) => j.kind === "brand",
+    ),
+  ).toBe(true);
+});

@@ -38,6 +38,14 @@ export type BrandGithub = {
   topics: string[];
   repos: BrandRepo[];
 };
+export type BrandPoint = {
+  at: string;
+  score: number | null;
+  rating: number | null;
+  reviews: number;
+  stars: number | null;
+  issues: number;
+};
 export type BrandProfile = {
   name: string;
   tagline: string;
@@ -71,6 +79,7 @@ export type BrandProfile = {
   warnings: string[];
   scannedAt: string;
   applied: boolean;
+  history: BrandPoint[];
 };
 
 const LIMIT = 120_000;
@@ -126,6 +135,7 @@ export function emptyBrand(): BrandProfile {
     warnings: [],
     scannedAt: "",
     applied: false,
+    history: [],
   };
 }
 
@@ -247,6 +257,28 @@ export function validateBrand(value: unknown): BrandProfile | undefined {
     warnings: strings(v.warnings, 10, 300),
     scannedAt: str(v.scannedAt, 30),
     applied: v.applied === true,
+    history: Array.isArray(v.history)
+      ? v.history
+          .filter((h) => h && typeof h === "object" && str(h.at, 30))
+          .slice(-52)
+          .map((h) => ({
+            at: str(h.at, 30),
+            score:
+              typeof h.score === "number" && Number.isFinite(h.score)
+                ? Math.min(100, Math.max(0, Math.round(h.score)))
+                : null,
+            rating:
+              typeof h.rating === "number" && Number.isFinite(h.rating)
+                ? Math.min(5, Math.max(0, h.rating))
+                : null,
+            reviews: Math.max(0, Math.round(num(h.reviews))),
+            stars:
+              typeof h.stars === "number" && Number.isFinite(h.stars)
+                ? Math.max(0, Math.round(h.stars))
+                : null,
+            issues: Math.max(0, Math.round(num(h.issues))),
+          }))
+      : [],
   };
 }
 
@@ -373,4 +405,53 @@ export function initials(name: string) {
       .map((w) => w[0]?.toUpperCase())
       .join("") || "AE"
   );
+}
+
+export function brandPoint(brand: BrandProfile): BrandPoint {
+  return {
+    at: brand.scannedAt || new Date().toISOString(),
+    score: brand.audit.checks.length ? brand.audit.score : null,
+    rating: brand.rating?.value ?? null,
+    reviews: brand.rating?.count ?? 0,
+    stars: brand.githubData?.stars ?? null,
+    issues: brand.audit.checks.filter((c) => !c.ok).length,
+  };
+}
+export function withHistory(
+  next: BrandProfile,
+  previous?: BrandProfile,
+): BrandProfile {
+  const point = brandPoint(next);
+  const day = point.at.slice(0, 10);
+  const history = [
+    ...(previous?.history ?? []).filter((h) => h.at.slice(0, 10) !== day),
+    point,
+  ]
+    .sort((a, b) => a.at.localeCompare(b.at))
+    .slice(-52);
+  return { ...next, history };
+}
+export function brandAlerts(history: BrandPoint[]) {
+  const [prev, last] = history.slice(-2);
+  if (!prev || !last) return [];
+  const alerts: string[] = [];
+  if (
+    prev.score !== null &&
+    last.score !== null &&
+    last.score <= prev.score - 5
+  )
+    alerts.push(`wynik strony spadł z ${prev.score} do ${last.score}`);
+  if (
+    prev.rating !== null &&
+    last.rating !== null &&
+    last.rating <= prev.rating - 0.1
+  )
+    alerts.push(
+      `ocena spadła z ${prev.rating.toFixed(1)} do ${last.rating.toFixed(1)}`,
+    );
+  if (last.issues > prev.issues)
+    alerts.push(`nowe problemy na stronie: ${last.issues - prev.issues}`);
+  if (prev.score !== null && last.score === null)
+    alerts.push("strona przestała odpowiadać przy skanie");
+  return alerts;
 }

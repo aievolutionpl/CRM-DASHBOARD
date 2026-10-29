@@ -2,6 +2,7 @@
 import { useEffect, useRef } from "react";
 import { useCrm } from "./crm-store";
 import { runAgent } from "./agent-store";
+import { monitorBrand } from "./brand-scan";
 import { dueJobs, nextRun, type Job } from "@/lib/automation/model";
 import { generateReport } from "@/lib/reports/generate";
 import { id as newId, offsetDate, today } from "@/lib/crm/model";
@@ -62,7 +63,11 @@ export async function runJob(job: Job, manual = false) {
       });
       message = `Wygenerowano „${data.title}” · ${data.period.label}.`;
     } else if (job.kind === "followup") message = followups();
-    else {
+    else if (job.kind === "brand") {
+      const result = await monitorBrand();
+      message = result.message;
+      if (result.alerts.length) status = "error";
+    } else {
       const reply = await runAgent(job.prompt, { source: "job" });
       const executed = reply.actions.filter(
         (a) => a.status === "executed",

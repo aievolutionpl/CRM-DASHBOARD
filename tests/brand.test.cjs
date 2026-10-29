@@ -434,3 +434,84 @@ test("odczyt strony podąża za przekierowaniem i zwraca końcowy adres", async 
     if (saved.b !== undefined) process.env.https_proxy = saved.b;
   }
 });
+
+test("historia marki: punkty, jeden skan dziennie, alerty spadków i harmonogram", () => {
+  const automation = load("lib/automation/model.ts");
+  const base = brand.validateBrand({
+    ...brand.emptyBrand(),
+    name: "Róża",
+    website: "https://roza.example.pl/",
+    rating: { value: 4.8, count: 120, source: "Google", url: "" },
+    audit: {
+      score: 90,
+      responseMs: 100,
+      checks: [{ id: "a", label: "A", ok: true, weight: 1, hint: "" }],
+    },
+    scannedAt: "2026-10-01T08:00:00.000Z",
+  });
+  const first = brand.withHistory(base);
+  assert.deepEqual(plain(first.history), [
+    {
+      at: "2026-10-01T08:00:00.000Z",
+      score: 90,
+      rating: 4.8,
+      reviews: 120,
+      stars: null,
+      issues: 0,
+    },
+  ]);
+  const sameDay = brand.withHistory(
+    { ...base, scannedAt: "2026-10-01T18:00:00.000Z" },
+    first,
+  );
+  assert.equal(sameDay.history.length, 1);
+  assert.deepEqual(plain(brand.brandAlerts(sameDay.history)), []);
+  const worse = brand.withHistory(
+    {
+      ...base,
+      scannedAt: "2026-10-08T08:00:00.000Z",
+      rating: { ...base.rating, value: 4.6 },
+      audit: {
+        score: 80,
+        responseMs: 100,
+        checks: [{ id: "a", label: "A", ok: false, weight: 1, hint: "" }],
+      },
+    },
+    sameDay,
+  );
+  assert.equal(worse.history.length, 2);
+  const alerts = brand.brandAlerts(worse.history);
+  assert.equal(alerts.length, 3);
+  assert.match(alerts[0], /90 do 80/);
+  assert.match(alerts[1], /4\.8 do 4\.6/);
+  const many = {
+    ...worse,
+    history: Array.from({ length: 60 }, (_, i) => ({
+      at: `2026-01-${String((i % 28) + 1).padStart(2, "0")}T00:00:00Z${i}`,
+      score: 150,
+      rating: 9,
+      reviews: -1,
+      stars: 3,
+      issues: 1,
+    })),
+  };
+  const valid = brand.validateBrand(many);
+  assert.equal(valid.history.length, 52);
+  assert.equal(valid.history[0].score, 100);
+  assert.equal(valid.history[0].rating, 5);
+  assert.equal(valid.history[0].reviews, 0);
+  const job = automation.newJob(
+    {
+      name: "Monitoring",
+      kind: "brand",
+      frequency: "weekly",
+      weekday: 1,
+      time: "08:15",
+    },
+    "j1",
+    new Date("2026-10-29T10:00:00Z"),
+  );
+  assert.equal(job.kind, "brand");
+  assert.equal(automation.jobKindLabels.brand, "Monitoruj markę");
+  assert.ok(automation.JOB_TEMPLATES.some((t) => t.kind === "brand"));
+});
