@@ -6,3 +6,5 @@ require("./google-oauth.test.cjs");
 require("./automation.test.cjs");
 require("./batch.test.cjs");
 require("./brand.test.cjs");
+require("./lead-crm.test.cjs");
+require("./attribution.test.cjs");

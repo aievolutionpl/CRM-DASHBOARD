@@ -14,16 +14,21 @@ import { Badge, Empty, Icon } from "../crm/ui";
 import { downloadFile } from "@/lib/crm/backup";
 import { LeadForm, EventForm } from "./forms";
 import LeadDetail, { eventDate, leadMoney } from "./detail";
+import { useCrm } from "@/stores/crm-store";
+import type { Section } from "@/lib/crm/model";
+import { convertLeadToCrm } from "@/stores/lead-crm";
 export default function LeadHub({
   wid,
   query,
   readOnly,
   notify,
+  navigate,
 }: {
   wid: string;
   query: string;
   readOnly: boolean;
   notify: (message: string) => void;
+  navigate?: (section: Section) => void;
 }) {
   const [status, setStatus] = useState<LeadStatus | "">(""),
     [scope, setScope] = useState("real"),
@@ -36,7 +41,10 @@ export default function LeadHub({
     [bundle, setBundle] = useState<LeadBundle | null>(null),
     [detailError, setDetailError] = useState(""),
     [modal, setModal] = useState<"create" | "edit" | "event" | null>(null),
-    [demoBusy, setDemoBusy] = useState(false);
+    [demoBusy, setDemoBusy] = useState(false),
+    [converting, setConverting] = useState(false);
+  const crm = useCrm();
+  const serviceMode = crm.businessMode === "services";
   const [previousQuery, setPreviousQuery] = useState(query);
   if (previousQuery !== query) {
     setPreviousQuery(query);
@@ -126,6 +134,25 @@ export default function LeadHub({
       setDemoBusy(false);
     }
   }
+  async function toCrm() {
+    if (!bundle || converting) return;
+    setConverting(true);
+    try {
+      const result = await convertLeadToCrm(wid, bundle.lead.id, bundle);
+      setBundle(result.bundle);
+      setRefresh((n) => n + 1);
+      notify(`${result.summary} Źródło leada zapisano przy szansie.`);
+    } catch (e) {
+      notify(e instanceof Error ? e.message : "Nie udało się połączyć z CRM.");
+    } finally {
+      setConverting(false);
+    }
+  }
+  const links = bundle?.lead.crm_links ?? {};
+  const linkedFirm = crm.firms.find((f) => f.id === links.company_id);
+  const linkedDeal = crm.deals.find(
+    (d) => d.id === links.deal_id || (bundle && d.leadId === bundle.lead.id),
+  );
   if (selected)
     return (
       <div className="grid gap-6">
@@ -202,6 +229,50 @@ export default function LeadHub({
                 pochodzi z rzeczywistego konektora.
               </p>
             )}
+            <section className="crm-card flex flex-wrap items-center gap-4 border-violet-200! bg-[linear-gradient(120deg,#fff,var(--brand-50))]! p-5">
+              <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-violet-600 text-white">
+                <Icon name="companies" size={20} />
+              </span>
+              <div className="min-w-0 flex-1">
+                <strong className="block text-sm text-slate-800">
+                  {linkedFirm
+                    ? `W CRM: ${linkedFirm.name}`
+                    : "Ten lead nie jest jeszcze w CRM"}
+                </strong>
+                <p className="mt-0.5 text-xs leading-relaxed text-slate-500">
+                  {linkedFirm
+                    ? linkedDeal
+                      ? `Szansa „${linkedDeal.name}” · ${linkedDeal.stage} · źródło: ${linkedDeal.source || bundle.lead.source || "—"}`
+                      : serviceMode
+                        ? "Klient i kontakt są w CRM. Zlecenie zarezerwujesz w module Zlecenia."
+                        : "Firma jest w CRM. Możesz dodać szansę sprzedaży."
+                    : serviceMode
+                      ? "Utworzymy klienta i kontakt z danymi, źródłem i notatkami leada."
+                      : "Utworzymy firmę, kontakt i szansę sprzedaży z etapem, wartością i źródłem leada — bez duplikatów."}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {linkedFirm && navigate && (
+                  <button
+                    className="crm-button secondary"
+                    onClick={() => navigate(linkedDeal ? "deals" : "companies")}
+                  >
+                    Otwórz w CRM <Icon name="arrow" size={15} />
+                  </button>
+                )}
+                <button
+                  className="crm-button"
+                  disabled={readOnly || converting}
+                  onClick={() => void toCrm()}
+                >
+                  {converting
+                    ? "Łączenie…"
+                    : linkedFirm
+                      ? "Uzupełnij w CRM"
+                      : "Konwertuj do CRM"}
+                </button>
+              </div>
+            </section>
             <LeadDetail
               key={bundle.lead.id}
               bundle={bundle}

@@ -55,6 +55,8 @@ export type Deal = {
   stage: DealStage;
   closeDate: string;
   service?: ServiceBooking;
+  source?: string;
+  leadId?: string;
 };
 export const SERVICE_STATUSES = [
   "booked",

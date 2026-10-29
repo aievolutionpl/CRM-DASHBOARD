@@ -20,7 +20,10 @@ import {
 } from "@/lib/crm/model";
 import { generateReport } from "@/lib/reports/generate";
 import { newJob } from "@/lib/automation/model";
-import { isCloud } from "@/lib/growth/model";
+import { isCloud, isDatabase } from "@/lib/growth/model";
+import { convertLeadToCrm, leadSummary } from "./lead-crm";
+
+const converting = new Set<string>();
 
 export type ActionState = {
   id: string;
@@ -280,6 +283,8 @@ export function executeAction(action: AgentAction): string {
       });
       return `Zapisano szkic do ${contact.name} w Poczcie.`;
     }
+    case "convert_lead":
+      throw Error("Konwersja leada wymaga bazy SQLite lub Supabase.");
     case "generate_report": {
       const data = generateReport(
         crmData(),
@@ -359,12 +364,16 @@ export async function runAgent(
   const crm = useCrm.getState();
   const data = crmData();
   const day = today();
+  const leads =
+    isDatabase() && agent.workspace !== "local"
+      ? await leadSummary(agent.workspace).catch(() => undefined)
+      : undefined;
   let reply: { answer: string; actions: AgentAction[]; rejected: string[] };
   let error = false;
   try {
     if (provider === "builtin") {
       reply = parseCopilotReply(
-        builtinCopilot(prompt, data, day, crm.businessMode),
+        builtinCopilot(prompt, data, day, crm.businessMode, leads),
       );
     } else {
       const history = (agent.messages[agent.workspace] ?? [])
@@ -394,6 +403,7 @@ export async function runAgent(
             automation: crm.automation,
             businessMode: crm.businessMode,
             brand: crm.brand,
+            leads,
           }),
         }),
       });
@@ -406,7 +416,7 @@ export async function runAgent(
   } catch (e) {
     error = true;
     const fallback = parseCopilotReply(
-      builtinCopilot(prompt, data, day, crm.businessMode),
+      builtinCopilot(prompt, data, day, crm.businessMode, leads),
     );
     reply = {
       answer: `> ⚠️ ${e instanceof Error ? e.message : "Błąd dostawcy AI."} Odpowiada wbudowany agent offline.\n\n${fallback.answer}`,
@@ -460,6 +470,33 @@ export function decideAction(
       status: "failed",
       result: "Brak uprawnień do zapisu.",
     });
+    return;
+  }
+  if (item.action.type === "convert_lead") {
+    const action = item.action;
+    if (converting.has(actionId)) return;
+    if (!isDatabase() || agent.workspace === "local") {
+      agent.patchAction(messageId, actionId, {
+        status: "failed",
+        result: "Konwersja leada wymaga bazy SQLite lub Supabase.",
+      });
+      return;
+    }
+    converting.add(actionId);
+    void convertLeadToCrm(agent.workspace, action.leadId)
+      .then((r) =>
+        useAgent.getState().patchAction(messageId, actionId, {
+          status: "executed",
+          result: r.summary,
+        }),
+      )
+      .catch((e) =>
+        useAgent.getState().patchAction(messageId, actionId, {
+          status: "failed",
+          result: e instanceof Error ? e.message : "Nie udało się wykonać.",
+        }),
+      )
+      .finally(() => converting.delete(actionId));
     return;
   }
   try {

@@ -10,7 +10,7 @@ Lead Hub jest osobną domeną obok CRM. Nie migruje automatycznie firm, kontakt�
 - `conversions`: kamienie milowe formularza, kwalifikacji, oferty, rezerwacji, pracy i płatności. Ich wartości mają różne znaczenia; nie sumujemy ich jako przychodu.
 - `appointments`, `quotes`, `jobs`, `payments`: podstawowe rekordy sprzedażowe odtwarzane ze zdarzeń. Są fundamentem dalszej rozbudowy, bez ERP, faktur czy integracji kalendarza.
 
-`crm_links` rezerwuje przyszłe relacje company/contact/deal/customer. Obecnie jest pusty i nie ma automatycznej konwersji. Zlecenia `jobs` Lead Hub nie zastępują istniejącego `Deal.service`.
+`crm_links` przechowuje relacje company/contact/deal ustawiane przez **Konwertuj do CRM** (`POST /leads/{id}/crm` z `revision` i `links`, zdarzenie `lead_updated` na osi). Szansa CRM dostaje `source` i `leadId`. Zlecenia `jobs` Lead Hub nie zastępują istniejącego `Deal.service`.
 
 Dane finansowe są w PLN. Wpłata wymaga dodatniej kwoty; podnosi zapisany revenue. Zakończenie pracy nie potwierdza otrzymania pieniędzy. Revenue można też zadeklarować ręcznie; to wartość CRM, bez weryfikacji księgowej. Ręczny składnik jest zachowywany przy dodawaniu kolejnych zdarzeń. Uporządkowanie dat wstecznych odtwarza rekordy ofert/prac, bez podwójnego liczenia wpłat.
 

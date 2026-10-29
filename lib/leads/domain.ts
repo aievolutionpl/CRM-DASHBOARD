@@ -5,6 +5,7 @@ import {
   emailKey,
   phoneKey,
   LeadError,
+  type Lead,
   type LeadInput,
   type LeadBundle,
   type LeadEvent,
@@ -238,4 +239,27 @@ export function updateLead(original: LeadBundle, input: LeadInput): LeadBundle {
       },
     });
   return b;
+}
+export function linkCrm(
+  original: LeadBundle,
+  links: Lead["crm_links"],
+): LeadBundle {
+  const b: LeadBundle = structuredClone(original);
+  b.lead.crm_links = { ...b.lead.crm_links, ...links };
+  b.lead.updated_at = new Date().toISOString();
+  b.lead.revision = original.lead.revision + 1;
+  return addEvent(b, {
+    id: randomUUID(),
+    workspace_id: b.lead.workspace_id,
+    lead_id: b.lead.id,
+    event_type: "lead_updated",
+    source: "CRM",
+    timestamp: b.lead.updated_at,
+    metadata: {
+      note: "Połączono z CRM: firma, kontakt i szansa sprzedaży.",
+      ...Object.fromEntries(
+        Object.entries(links).map(([k, v]) => [`crm_${k}`, v ?? ""]),
+      ),
+    },
+  });
 }

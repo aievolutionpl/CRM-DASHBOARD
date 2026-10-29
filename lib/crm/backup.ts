@@ -82,7 +82,9 @@ export function parseBackup(source: string): WorkspaceData {
       deal.probability < 0 ||
       deal.probability > 100 ||
       !DEAL_STAGES.includes(deal.stage) ||
-      !date(deal.closeDate)
+      !date(deal.closeDate) ||
+      (deal.source !== undefined && !text(deal.source, 100)) ||
+      (deal.leadId !== undefined && !text(deal.leadId, 100))
     )
       throw Error("Nieprawidłowe dane szansy.");
   for (const deal of deals)

@@ -37,6 +37,8 @@ import { useScheduler } from "@/stores/scheduler";
 import BrandStudio from "../brand/brand-studio";
 import { BrandFont, BrandLogo, useBrandStyle } from "../brand/theme";
 import { initials } from "@/lib/brand/model";
+import ChannelReturns from "../insights/channel-returns";
+import { offsetDate, today } from "@/lib/crm/model";
 const NAV: { id: Section; title: string; description: string }[] = [
   {
     id: "dashboard",
@@ -631,6 +633,7 @@ export default function Workspace({
                 query={query}
                 readOnly={!!readOnly}
                 notify={notify}
+                navigate={navigate}
               />
             ) : (
               <section className="crm-card p-6">
@@ -656,6 +659,15 @@ export default function Workspace({
                 readOnly={!!readOnly}
               />
               <StatsBoard navigate={navigate} serviceMode={serviceMode} />
+              {!isSqlite() && (
+                <div className="mb-6">
+                  <ChannelReturns
+                    from={offsetDate(-29)}
+                    to={today()}
+                    spendSources={false}
+                  />
+                </div>
+              )}
             </>
           )}
           {section === "dashboard" && !serviceMode && (

@@ -580,3 +580,60 @@ test("Brand Studio: strona + GitHub dopasowują dashboard, zapis w SQLite i Comp
   await page.setViewportSize({ width: 390, height: 900 });
   await noOverflow(page);
 });
+
+test("Lead Hub → CRM: konwersja tworzy firmę, kontakt i szansę ze źródłem, bez duplikatów", async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  const id = await ready(page);
+  await navigate(page, "Lead Hub");
+  await page.getByRole("button", { name: "Dodaj leada", exact: true }).click();
+  await page.getByLabel("Imię leada", { exact: true }).fill("Anna");
+  await page.getByLabel("Nazwisko leada", { exact: true }).fill("Nowak");
+  await page
+    .getByLabel("E-mail leada", { exact: true })
+    .fill("anna.nowak@example.com");
+  await page.getByLabel("Źródło leada", { exact: true }).fill("google_ads");
+  await page
+    .getByLabel("Kampania leada", { exact: true })
+    .fill("Remonty · Kraków");
+  await page
+    .getByLabel("Szacowana wartość (PLN)", { exact: true })
+    .fill("12000");
+  await page.getByRole("button", { name: "Zapisz leada", exact: true }).click();
+  await expect(page.getByText("Ten lead nie jest jeszcze w CRM")).toBeVisible();
+  await page
+    .getByRole("button", { name: "Konwertuj do CRM", exact: true })
+    .click();
+  await expect(page.getByText("W CRM: Anna Nowak")).toBeVisible();
+  await expect(page.getByText("źródło: google_ads")).toBeVisible();
+  await expect(
+    page.getByText("Zapisano w SQLite", { exact: true }),
+  ).toBeVisible();
+  const saved = await (
+    await page.request.get(`/api/local/workspaces/${id}/data`)
+  ).json();
+  expect(saved.data.firms).toHaveLength(1);
+  expect(saved.data.contacts[0].email).toBe("anna.nowak@example.com");
+  expect(saved.data.deals[0]).toMatchObject({
+    name: "Remonty · Kraków — Anna Nowak",
+    value: 12000,
+    stage: "Nowa",
+    source: "google_ads",
+  });
+  await page
+    .getByRole("button", { name: "Uzupełnij w CRM", exact: true })
+    .click();
+  await expect(
+    page.getByText("Połączono z istniejącą firmą", { exact: false }),
+  ).toBeVisible();
+  const again = await (
+    await page.request.get(`/api/local/workspaces/${id}/data`)
+  ).json();
+  expect(again.data.firms).toHaveLength(1);
+  expect(again.data.deals).toHaveLength(1);
+  await page.getByRole("button", { name: "Otwórz w CRM" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Szanse sprzedaży", exact: true }),
+  ).toBeVisible();
+});

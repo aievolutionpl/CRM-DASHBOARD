@@ -12,6 +12,8 @@ import { money, today, offsetDate } from "@/lib/crm/model";
 import { Empty } from "../crm/ui";
 import { dailySeries } from "@/lib/crm/analytics";
 import { AreaChart, DonutChart } from "../crm/charts";
+import ChannelReturns from "../insights/channel-returns";
+import type { IntegrationResult } from "@/lib/integrations/model";
 export default function Marketing({
   wid,
   openConnectors,
@@ -25,7 +27,36 @@ export default function Marketing({
     [end, setEnd] = useState(today()),
     [source, setSource] = useState("all"),
     [error, setError] = useState(""),
-    [chartMetric, setChartMetric] = useState("leads");
+    [chartMetric, setChartMetric] = useState("leads"),
+    [adsDaily, setAdsDaily] = useState<{ date: string; cost: number }[]>([]);
+  useEffect(() => {
+    let active = true;
+    localRequest(wid, "integrations")
+      .then((r) => {
+        const states = r.states as { provider: string; status: string }[];
+        const ads = (
+          r.snapshots as { provider: string; payload: IntegrationResult }[]
+        ).find(
+          (s) =>
+            s.provider === "google_ads" &&
+            s.payload.report?.currency === "PLN" &&
+            !states.some(
+              (x) => x.provider === "google_ads" && x.status === "disconnected",
+            ),
+        );
+        if (active)
+          setAdsDaily(
+            (ads?.payload.report?.daily ?? []).map((d) => ({
+              date: String(d.date),
+              cost: Number(d.cost) || 0,
+            })),
+          );
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [wid]);
   const load = useCallback(
     () =>
       localRequest(wid, "marketing")
@@ -141,6 +172,13 @@ export default function Marketing({
           {error}
         </p>
       )}
+      <ChannelReturns
+        rows={source === "all" ? rows : rows.filter((r) => r.source === source)}
+        adsDaily={source === "all" || source === "google_ads" ? adsDaily : []}
+        from={from}
+        to={to}
+        spendSources={rows.length > 0 || adsDaily.length > 0}
+      />
       {!filtered.length ? (
         <section className="crm-card">
           <Empty

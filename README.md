@@ -49,7 +49,7 @@ _Działająca aplikacja, lokalny zapis SQLite i zaimportowane dane demonstracyjn
 | **AI Brain (SQLite)**     | Agent Company Brain z notatkami i marketingiem; propozycje zadań i notatek z kontrolą wersji po stronie serwera.                                                                                    |
 | **Konektory i poczta**    | Katalog z filtrami; logowanie Google i odczyty Ads, GA4, Search Console, WordPress, PostHog i Stripe, import wyników kampanii, zatwierdzana wysyłka przez Resend lub szkic w programie pocztowym.   |
 
-**Dwa sposoby pracy:** CRM i sprzedaż albo Firma usługowa. Przełączenie zmienia widoki i zachowuje dane. Lead Hub działa obok dotychczasowego CRM; nie przenosi automatycznie kontaktów ani zleceń między modułami.
+**Dwa sposoby pracy:** CRM i sprzedaż albo Firma usługowa. Przełączenie zmienia widoki i zachowuje dane. Lead Hub działa obok CRM; przycisk **Konwertuj do CRM** w karcie leada tworzy firmę (klienta), kontakt i szansę sprzedaży ze źródłem leada.
 
 **Lokalny zapis nie oznacza, że każde działanie odbywa się offline.** CRM, historia leadów i notatki korzystają z lokalnej bazy. Analiza AI, odczyt strony firmy, konektory i wysyłka przez dostawcę wymagają połączenia oraz odpowiedniej konfiguracji. Zakres funkcji zależy od trybu przechowywania opisanego poniżej.
 
@@ -106,7 +106,7 @@ W menu **Lead Hub** zapiszesz potencjalnego klienta od pierwszego kontaktu do re
 
 E-mail lub telefon rozpoznają istniejący kontakt w danej przestrzeni. Jeśli wskazują dwie różne osoby, zapis zgłasza konflikt zamiast łączyć je automatycznie. Viewer może czytać i filtrować, ale nie zmieniać danych. **Pobierz historię JSON** pobiera JSON karty i historii; pełna kopia SQLite obejmuje cały moduł. Kopia JSON starego CRM nie obejmuje Lead Hub.
 
-To zapisane zdarzenia i fundament sprzedaży: brak automatycznego pobierania z Ads/telefonii, faktur, synchronizacji z kalendarzem zleceń oraz połączenia kosztów kampanii z ROAS. Agent AI nie operuje jeszcze na Lead Hub. [Dane, API, uprawnienia i ograniczenia](docs/LEAD-HUB.md).
+**Konwertuj do CRM** tworzy lub odnajduje firmę (po nazwie), kontakt (po e-mailu) i szansę sprzedaży z etapem wynikającym ze statusu leada, wartością i źródłem; ponowne kliknięcie nie tworzy duplikatów, a karta leada pokazuje powiązanie i prowadzi do CRM. W trybie usługowym powstaje klient i kontakt, a zlecenie rezerwujesz w module Zlecenia. Agent AI widzi ostatnie leady (status, źródło, wartość, czy są w CRM) i może proponować akcję `convert_lead`; offline zrozumie m.in. „pokaż leady” i „przenieś leady do CRM”. Brak automatycznego pobierania z Ads/telefonii, faktur i synchronizacji z kalendarzem. [Dane, API, uprawnienia i ograniczenia](docs/LEAD-HUB.md).
 
 ## Dwa sposoby pracy: sprzedaż albo usługi
 
@@ -144,6 +144,7 @@ Opcjonalnie w `.env.local`: `GOOGLE_PLACES_API_KEY` (ocena i recenzje z Map Goog
 - **Sprzedaż:** wykres etapów przełączany między PLN i liczbą szans, prognoza ważona oraz udział wygranych i przegranych w zamkniętych rozmowach.
 - **Lejek i prognoza:** konwersja między etapami (Nowa → Rozmowa → Oferta → Wygrana) oraz harmonogram zamknięć otwartych szans z wartością pełną i ważoną, z wyróżnieniem szans po terminie.
 - **Marka:** wynik audytu strony, ocena klientów, GitHub i analityka — po skanie w Profilu firmy.
+- **Zwrot z marketingu:** wydatki z importu CSV (i Google Ads w PLN dla dni bez CSV) zestawione z wygranymi szansami i zakończonymi zleceniami według pola „Źródło klienta” — CAC, ROAS liczony z przychodu CRM, koszt leada i otwarty lejek dla każdego kanału. Źródła są normalizowane (np. „Google Ads”, „adwords” → Google Ads; „facebook” → Meta Ads). W trybie przeglądarki i Supabase panel pokazuje przychód według źródła bez wydatków.
 - **Usługi:** klienci, aktywne rezerwacje, ich wartość, zakończone realizacje, statusy i plan pracy. Trend 7/30/90 dni liczy aktualnie zakończone prace według daty ich rozpoczęcia. Dni bez realizacji mają wartość zero.
 
 Wskaż punkt wykresu kursorem, dotknięciem lub klawiaturą, aby zobaczyć dokładną wartość. **Dane wykresu** otwierają tabelę liczb. Puste dane pozostają puste. Interfejs działa na telefonie, a efekty szkła mają warianty dla ograniczonej przezroczystości i ruchu.
@@ -340,6 +341,8 @@ Cloud zachowuje szkice i program pocztowy. Wysyłka przez globalny Resend jest w
 ## Rozwój i weryfikacja
 
 Next.js 16, React 19, TypeScript, Tailwind CSS 4, Zustand, natywne `node:sqlite`. Czytaj [AGENTS.md](AGENTS.md) i dokumentację zainstalowanego Next.js przed zmianami. W Codex korzystaj z istniejącego checkoutu `/workspace/CRM-DASHBOARD`, bez dodatkowego worktree.
+
+**CI (GitHub Actions, `.github/workflows/ci.yml`):** każdy PR i push na `main` uruchamia lint, formatowanie zmienionych plików, testy jednostkowe, build SQLite i TypeScript, scenariusze Playwright edycji SQLite (Node 24, build produkcyjny) oraz migracje i RLS Supabase na Postgres 17 w Dockerze (`npm run test:db`).
 
 ```bash
 npm test
