@@ -163,6 +163,16 @@ test("GitHub: rozpoznanie linku i podsumowanie repozytoriów", () => {
       language: "Go",
     },
   ];
+  repos.push({
+    full_name: "a/secret",
+    name: "secret",
+    private: true,
+    visibility: "private",
+    stargazers_count: 1000,
+    language: "Rust",
+  });
+  assert.equal(github.publicRepo(repos[3]), false);
+  assert.equal(github.publicRepo(repos[0]), true);
   const g = github.summarizeGithub(
     {
       login: "a",

@@ -2,7 +2,12 @@ import "server-only";
 import { fetchPage, readPage, websiteUrl } from "../knowledge/research";
 import { apiJson } from "../integrations/http";
 import { auditScore, extractSite, type SiteFacts } from "./extract";
-import { githubTarget, githubWebsite, summarizeGithub } from "./github";
+import {
+  githubTarget,
+  githubWebsite,
+  publicRepo,
+  summarizeGithub,
+} from "./github";
 import {
   emptyBrand,
   validateBrand,
@@ -23,22 +28,32 @@ async function github(input: string) {
   if (process.env.GITHUB_TOKEN)
     headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
   const api = (path: string) =>
-    apiJson(`https://api.github.com${path}`, { headers }).catch((e: Error) => {
-      throw Error(
-        /HTTP 404/.test(e.message)
-          ? "GitHub: nie znaleziono profilu lub repozytorium (albo jest prywatne)."
-          : /HTTP 429/.test(e.message)
-            ? "GitHub: limit zapytań wyczerpany. Spróbuj za godzinę lub ustaw GITHUB_TOKEN w .env.local."
-            : /HTTP 403/.test(e.message)
-              ? "GitHub odrzucił zapytanie (limit zapytań lub brak dostępu sieci do api.github.com). Ustaw GITHUB_TOKEN w .env.local lub spróbuj później."
-              : `GitHub: ${e.message}`,
-      );
-    });
+    apiJson(`https://api.github.com${path}`, { headers })
+      .catch((e: Error) => {
+        if (!headers.Authorization || !/HTTP 401/.test(e.message)) throw e;
+        delete headers.Authorization;
+        return apiJson(`https://api.github.com${path}`, { headers });
+      })
+      .catch((e: Error) => {
+        throw Error(
+          /HTTP 404/.test(e.message)
+            ? "GitHub: nie znaleziono profilu lub repozytorium (albo jest prywatne)."
+            : /HTTP 429/.test(e.message)
+              ? "GitHub: limit zapytań wyczerpany. Spróbuj za godzinę lub ustaw GITHUB_TOKEN w .env.local."
+              : /HTTP 403/.test(e.message)
+                ? "GitHub odrzucił zapytanie (limit zapytań lub brak dostępu sieci do api.github.com). Ustaw GITHUB_TOKEN w .env.local lub spróbuj później."
+                : `GitHub: ${e.message}`,
+        );
+      });
   const optional = <T>(promise: Promise<unknown>, fallback: T) =>
     promise.then((v) => v as T).catch(() => fallback);
   const repo = target.repo
     ? ((await api(`/repos/${target.owner}/${target.repo}`)) as Json)
     : undefined;
+  if (repo && !publicRepo(repo))
+    throw Error(
+      "GitHub: skanujemy wyłącznie publiczne repozytoria. To repozytorium jest prywatne.",
+    );
   const [profile, repos, languages] = await Promise.all([
     repo
       ? optional<Json>(

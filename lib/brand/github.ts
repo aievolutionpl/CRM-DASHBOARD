@@ -31,13 +31,17 @@ export function githubTarget(input: string) {
   };
 }
 
+export const publicRepo = (r: Json) =>
+  r.private !== true &&
+  (r.visibility === undefined || r.visibility === "public");
+
 export function summarizeGithub(
   profile: Json,
   repos: Json[],
   repo?: Json,
   languages?: Record<string, number>,
 ): BrandGithub {
-  const own = repos.filter((r) => !r.fork && !r.archived);
+  const own = repos.filter((r) => !r.fork && !r.archived && publicRepo(r));
   const list: BrandRepo[] = [...(repo ? [repo] : []), ...own]
     .filter(
       (r, i, all) => all.findIndex((x) => x.full_name === r.full_name) === i,
