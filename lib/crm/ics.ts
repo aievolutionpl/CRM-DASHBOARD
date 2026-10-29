@@ -6,15 +6,22 @@ const escape = (v: string) =>
     .replace(/\r?\n/g, "\\n")
     .replace(/[,;]/g, (m) => `\\${m}`);
 function fold(line: string) {
+  const encoder = new TextEncoder();
   const out: string[] = [];
-  let rest = line;
-  while (new TextEncoder().encode(rest).length > 74) {
-    let cut = 74;
-    while (new TextEncoder().encode(rest.slice(0, cut)).length > 74) cut--;
-    out.push(rest.slice(0, cut));
-    rest = ` ${rest.slice(cut)}`;
+  let current = "",
+    bytes = 0;
+  for (const char of line) {
+    const size = encoder.encode(char).length;
+    if (bytes + size > 74) {
+      out.push(current);
+      current = ` ${char}`;
+      bytes = 1 + size;
+    } else {
+      current += char;
+      bytes += size;
+    }
   }
-  out.push(rest);
+  out.push(current);
   return out.join("\r\n");
 }
 const day = (d: string) => d.replace(/-/g, "");

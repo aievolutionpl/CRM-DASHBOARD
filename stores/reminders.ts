@@ -46,14 +46,17 @@ export function useReminderSetting() {
         "Przeglądarka nie zezwoliła na powiadomienia. Zmień to w ustawieniach witryny.",
       );
     write(KEY, "on");
-    write(SHOWN, "");
     setEnabled(true);
     return true;
   }
   return { enabled, toggle };
 }
 
-export function useReminders(active: boolean, label: string) {
+export function useReminders(
+  active: boolean,
+  label: string,
+  workspace: string,
+) {
   useEffect(() => {
     if (!active || !remindersSupported()) return;
     const check = () => {
@@ -66,9 +69,9 @@ export function useReminders(active: boolean, label: string) {
           timeZone: "Europe/Warsaw",
         }).format(new Date()),
       );
-      if (hour < 8 || read(SHOWN) === day) return;
+      const shown = `${SHOWN}:${workspace}`;
+      if (hour < 8 || read(shown) === day) return;
       const due = dueSummary(useCrm.getState().tasks, day);
-      write(SHOWN, day);
       if (!due.today && !due.overdue) return;
       new Notification(`${label}: plan na dziś`, {
         body: [
@@ -77,8 +80,9 @@ export function useReminders(active: boolean, label: string) {
         ]
           .filter(Boolean)
           .join(" · "),
-        tag: `growth-os-${day}`,
+        tag: `growth-os-${workspace}-${day}`,
       });
+      write(shown, day);
     };
     const first = setTimeout(check, 4000);
     const timer = setInterval(check, 15 * 60_000);
@@ -86,5 +90,5 @@ export function useReminders(active: boolean, label: string) {
       clearTimeout(first);
       clearInterval(timer);
     };
-  }, [active, label]);
+  }, [active, label, workspace]);
 }

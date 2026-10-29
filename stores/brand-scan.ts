@@ -55,10 +55,15 @@ export function applyScannedBrand(
   );
   brand.competitors =
     previous && sameBrandTarget(brand, previous) ? previous.competitors : [];
-  if (previous?.name === brand.name) {
+  if (previous && sameBrandTarget(brand, previous)) {
     brand.colors = previous.colors;
     brand.useFont = previous.useFont;
     brand.headingFont = previous.headingFont || brand.headingFont;
+    if (!apply) {
+      brand.name = previous.name || brand.name;
+      brand.tagline = previous.tagline || brand.tagline;
+      brand.description = previous.description || brand.description;
+    }
   }
   useCrm.getState().setBrand(brand);
   const sender = useCrm.getState().sender;

@@ -284,7 +284,7 @@ export default function Workspace({
     navigate("ai");
   };
   useScheduler(ready && !readOnly && !storageBusy, notify);
-  useReminders(ready, brand?.name || "Growth OS");
+  useReminders(ready, brand?.name || "Growth OS", cloud?.id ?? "local");
   const compose = (contact?: Contact) => {
     setSection("mail");
     setComposer({ contact });

@@ -83,3 +83,29 @@ test("kalendarz .ics: zadania całodniowe, zlecenia w czasie Warszawy, escaping 
     { overdue: 1, today: 0 },
   );
 });
+
+test("kalendarz .ics: zawijanie nie rozcina znaków spoza BMP", () => {
+  const out = ics.crmCalendar(
+    {
+      firms: [],
+      deals: [],
+      tasks: [
+        {
+          id: "t",
+          companyId: "",
+          title: `${"a".repeat(63)}😀 koniec`,
+          date: "2026-10-31",
+          done: false,
+        },
+      ],
+    },
+    "X",
+  );
+  assert.ok(!out.includes("�"));
+  const unfolded = out.replace(/\r\n /g, "");
+  assert.ok(unfolded.includes(`SUMMARY:${"a".repeat(63)}😀 koniec`));
+  for (const line of out.split("\r\n")) {
+    assert.ok(new TextEncoder().encode(line).length <= 75);
+    assert.ok(!/[\uD800-\uDBFF]$/.test(line));
+  }
+});

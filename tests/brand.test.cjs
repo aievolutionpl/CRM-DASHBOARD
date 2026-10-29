@@ -624,3 +624,54 @@ test("historia: nowa firma zaczyna własną serię, spadek oceny o 0,1 jest wykr
     false,
   );
 });
+
+test("monitoring zachowuje ręcznie zmienioną nazwę, opis i kolory tej samej marki", () => {
+  let current = brand.validateBrand({
+    ...brand.emptyBrand(),
+    name: "Moja nazwa",
+    tagline: "Mój slogan",
+    website: "https://roza.example.pl/",
+    colors: { primary: "#123456", accent: "#654321", palette: [] },
+    headingFont: "Lora",
+    useFont: true,
+    applied: true,
+  });
+  const store = {
+    getState: () => ({
+      brand: current,
+      sender: "X",
+      setBrand: (b) => (current = b),
+      setSender: () => {},
+    }),
+  };
+  const sync = load("stores/sync.ts");
+  const scan = load("stores/brand-scan.ts", {
+    "./crm-store": { useCrm: store },
+    "./agent-store": { authHeaders: async () => ({}) },
+    "./sync": sync,
+    "@/lib/brand/model": brand,
+  });
+  const scanned = brand.validateBrand({
+    ...brand.emptyBrand(),
+    name: "Kwiaciarnia Róża",
+    tagline: "Z H1",
+    website: "https://www.roza.example.pl/",
+    colors: { primary: "#e11d48", accent: "#16a34a", palette: [] },
+    scannedAt: "2026-10-29T08:00:00.000Z",
+  });
+  scan.applyScannedBrand(scanned, false, {
+    website: current.website,
+    github: "",
+  });
+  assert.equal(current.name, "Moja nazwa");
+  assert.equal(current.tagline, "Mój slogan");
+  assert.equal(current.colors.primary, "#123456");
+  assert.equal(current.headingFont, "Lora");
+  assert.equal(current.useFont, true);
+  scan.applyScannedBrand(
+    { ...scanned, website: "https://inna.example.pl/" },
+    true,
+  );
+  assert.equal(current.name, "Kwiaciarnia Róża");
+  assert.equal(current.colors.primary, "#e11d48");
+});
