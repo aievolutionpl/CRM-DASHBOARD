@@ -14,4 +14,5 @@ for crm_migration in supabase/migrations/*.sql; do
 done
 docker exec -i "$crm_test_container" psql -U postgres -v ON_ERROR_STOP=1 < tests/integration/workspace.sql
 docker exec -i "$crm_test_container" psql -U postgres -v ON_ERROR_STOP=1 < tests/integration/automation.sql
+docker exec -i "$crm_test_container" psql -U postgres -v ON_ERROR_STOP=1 < tests/integration/brand.sql
 node tests/integration/leads-fixture.cjs | docker exec -i "$crm_test_container" psql -U postgres -v ON_ERROR_STOP=1

@@ -341,6 +341,8 @@ Cloud zachowuje szkice i program pocztowy. Wysyłka przez globalny Resend jest w
 
 Next.js 16, React 19, TypeScript, Tailwind CSS 4, Zustand, natywne `node:sqlite`. Czytaj [AGENTS.md](AGENTS.md) i dokumentację zainstalowanego Next.js przed zmianami. W Codex korzystaj z istniejącego checkoutu `/workspace/CRM-DASHBOARD`, bez dodatkowego worktree.
 
+**CI (GitHub Actions, `.github/workflows/ci.yml`):** każdy PR i push na `main` uruchamia lint, formatowanie zmienionych plików, testy jednostkowe, build SQLite i TypeScript, scenariusze Playwright edycji SQLite (Node 24, build produkcyjny) oraz migracje i RLS Supabase na Postgres 17 w Dockerze (`npm run test:db`).
+
 ```bash
 npm test
 npm run lint

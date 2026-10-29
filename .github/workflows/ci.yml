@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Lint, typy, testy jednostkowe i build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - name: Formatowanie zmienionych plików
+        if: github.event_name == 'pull_request'
+        run: |
+          files=$(git diff --name-only --diff-filter=ACMR origin/${{ github.base_ref }}...HEAD | grep -E '\.(ts|tsx|js|mjs|cjs|css|json|md|yml)$' || true)
+          if [ -n "$files" ]; then npx prettier --check $files; fi
+      - run: npm test
+      - name: Build (SQLite)
+        run: npm run build:localdb
+      - run: npx tsc --noEmit --incremental false
+
+  e2e-sqlite:
+    name: Playwright · edycja SQLite
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: checks
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build:localdb
+      - run: npm run test:localdb
+        env:
+          CRM_LOCAL_TEST_PRODUCTION: "1"
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-sqlite
+          path: test-results/
+          retention-days: 7
+
+  supabase-db:
+    name: Migracje i RLS Supabase (Postgres)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run test:db
