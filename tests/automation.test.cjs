@@ -189,3 +189,53 @@ test("zapis przestrzeni zachowuje harmonogram i raporty", () => {
   });
   assert.equal(legacy.settings.automation.jobs.length, 0);
 });
+
+test("harmonogram: wynik zadania po zmianie przestrzeni jest odrzucany", async () => {
+  const sync = load("stores/sync.ts");
+  const writes = [];
+  const job = {
+    id: "j1",
+    name: "Monitoring",
+    kind: "brand",
+    frequency: "weekly",
+    time: "08:15",
+    weekday: 1,
+    monthDay: 1,
+    enabled: true,
+    reportKind: "executive",
+    preset: "7d",
+    prompt: "",
+    created: "2026-10-01T00:00:00.000Z",
+    nextRun: "2026-10-05T06:15:00.000Z",
+  };
+  const state = {
+    automation: { jobs: [job] },
+    saveJob: (j) => writes.push(["job", j.id]),
+    addRun: (r) => writes.push(["run", r.jobId]),
+  };
+  const scheduler = load("stores/scheduler.ts", {
+    "./crm-store": { useCrm: { getState: () => state } },
+    "./agent-store": { runAgent: async () => ({ actions: [] }) },
+    "./sync": sync,
+    "./brand-scan": {
+      monitorBrand: async () => {
+        sync.registerSync({ workspace: "B", flush: async () => {} });
+        throw Error("Przestrzeń została zmieniona w trakcie skanu.");
+      },
+    },
+    react: { useEffect: () => {}, useRef: () => ({}) },
+    "@/lib/automation/model": automation,
+    "@/lib/reports/generate": reports,
+    "@/lib/crm/model": model,
+  });
+  sync.registerSync({ workspace: "A", flush: async () => {} });
+  const result = await scheduler.runJob(job, true);
+  assert.equal(result.discarded, true);
+  assert.deepEqual(writes, []);
+  const ok = await scheduler.runJob({ ...job, kind: "followup" }, true);
+  assert.equal(ok.discarded, false);
+  assert.deepEqual(
+    writes.map((w) => w[0]),
+    ["job", "run"],
+  );
+});
