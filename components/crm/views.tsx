@@ -1,4 +1,6 @@
 "use client";
+import { crmCalendar } from "@/lib/crm/ics";
+import { remindersSupported, useReminderSetting } from "@/stores/reminders";
 import { useState, type ReactNode } from "react";
 import { useCrm } from "@/stores/crm-store";
 import {
@@ -14,6 +16,7 @@ import {
 import { Icon, Badge, Empty, Modal } from "./ui";
 import { DonutChart } from "./charts";
 import { downloadCsv } from "@/lib/csv";
+import { downloadFile } from "@/lib/crm/backup";
 import type { Editor } from "./forms";
 export type ViewProps = {
   query: string;
@@ -717,8 +720,9 @@ export function Contacts({ query, edit, compose }: ViewProps) {
     </>
   );
 }
-export function Tasks({ query, edit }: ViewProps) {
+export function Tasks({ query, edit, notify }: ViewProps) {
   const s = useCrm();
+  const reminders = useReminderSetting();
   const [filter, setFilter] = useState("open");
   const visible = s.tasks
     .filter(
@@ -750,10 +754,50 @@ export function Tasks({ query, edit }: ViewProps) {
             </button>
           ))}
         </div>
-        <button className="crm-button" onClick={() => edit({ kind: "task" })}>
-          <Icon name="plus" size={18} />
-          Dodaj zadanie
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            className="crm-button secondary"
+            onClick={() =>
+              downloadFile(
+                "growth-os-kalendarz.ics",
+                crmCalendar(
+                  s,
+                  s.brand?.name ? `${s.brand.name} · Growth OS` : "Growth OS",
+                ),
+                "text/calendar;charset=utf-8",
+              )
+            }
+            title="Otwarte zadania i zaplanowane zlecenia do Google Calendar, Outlook lub Apple Calendar"
+          >
+            <Icon name="download" size={16} />
+            Kalendarz (.ics)
+          </button>
+          {remindersSupported() && (
+            <button
+              className="crm-button secondary"
+              aria-pressed={reminders.enabled}
+              onClick={() =>
+                void reminders
+                  .toggle()
+                  .then((on) =>
+                    notify(
+                      on
+                        ? "Przypomnienia włączone: codziennie po 8:00 dostaniesz powiadomienie o zadaniach na dziś i zaległych."
+                        : "Przypomnienia wyłączone.",
+                    ),
+                  )
+                  .catch((e) => notify(e.message))
+              }
+            >
+              <Icon name="clock" size={16} />
+              {reminders.enabled ? "Przypomnienia: wł." : "Włącz przypomnienia"}
+            </button>
+          )}
+          <button className="crm-button" onClick={() => edit({ kind: "task" })}>
+            <Icon name="plus" size={18} />
+            Dodaj zadanie
+          </button>
+        </div>
       </div>
       <section className="crm-card">
         {visible.map((t) => (

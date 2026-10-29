@@ -795,3 +795,25 @@ test("Konkurencja: skan konkurenta, tabela porównania, przewagi i Company Brain
     page.getByText("Dodaj do 3 stron konkurentów", { exact: false }),
   ).toBeVisible();
 });
+
+test("Zadania: eksport kalendarza .ics z otwartymi zadaniami", async ({
+  page,
+}) => {
+  await ready(page);
+  await navigate(page, "Zadania");
+  await page
+    .getByRole("button", { name: "Dodaj zadanie", exact: true })
+    .click();
+  await page
+    .getByLabel("Treść zadania")
+    .fill("Oddzwoń do klienta, potwierdź termin");
+  await page.getByRole("button", { name: "Zapisz", exact: true }).click();
+  const download = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Kalendarz (.ics)" }).click();
+  const file = await download;
+  expect(file.suggestedFilename()).toBe("growth-os-kalendarz.ics");
+  const text = await (await file.createReadStream()).toArray();
+  const content = Buffer.concat(text).toString("utf8");
+  expect(content).toContain("BEGIN:VCALENDAR");
+  expect(content).toContain("SUMMARY:Oddzwoń do klienta\\, potwierdź termin");
+});

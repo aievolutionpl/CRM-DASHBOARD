@@ -34,6 +34,7 @@ import Reports from "../reports/reports";
 import Automations from "../automation/automations";
 import Copilot from "../copilot/copilot";
 import { useScheduler } from "@/stores/scheduler";
+import { useReminders } from "@/stores/reminders";
 import BrandStudio from "../brand/brand-studio";
 import { BrandFont, BrandLogo, useBrandStyle } from "../brand/theme";
 import { initials } from "@/lib/brand/model";
@@ -283,6 +284,7 @@ export default function Workspace({
     navigate("ai");
   };
   useScheduler(ready && !readOnly && !storageBusy, notify);
+  useReminders(ready, brand?.name || "Growth OS");
   const compose = (contact?: Contact) => {
     setSection("mail");
     setComposer({ contact });
