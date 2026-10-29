@@ -68,8 +68,8 @@ export function convertLead(
       .join("\n")
       .slice(0, 5000),
     created: today,
-    email: lead.company_name ? "" : email,
-    phone: lead.company_name ? "" : lead.phone.slice(0, 50),
+    email: lead.company_name && email ? "" : email,
+    phone: lead.company_name && email ? "" : lead.phone.slice(0, 50),
   };
   const linkedContact = data.contacts.find(
     (c) => c.id === lead.crm_links.contact_id,

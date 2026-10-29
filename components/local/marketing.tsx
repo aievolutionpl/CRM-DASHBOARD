@@ -178,6 +178,7 @@ export default function Marketing({
         from={from}
         to={to}
         spendSources={rows.length > 0 || adsDaily.length > 0}
+        channelFilter={source === "all" ? undefined : source}
       />
       {!filtered.length ? (
         <section className="crm-card">

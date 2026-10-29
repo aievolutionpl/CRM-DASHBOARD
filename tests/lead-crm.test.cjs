@@ -224,3 +224,33 @@ test("agent: akcja convert_lead i odpowiedź offline o leadach", () => {
   );
   assert.equal(ctx.leads.total, 3);
 });
+
+test("lead firmy bez e-maila zachowuje telefon na karcie firmy", () => {
+  const r = crm.convertLead(
+    lead({ email: "", phone: "+48 600 700 800" }).lead,
+    empty(),
+    "2026-10-29",
+    ids,
+  );
+  assert.equal(r.contact, undefined);
+  assert.equal(r.firm.phone, "+48 600 700 800");
+  const withEmail = crm.convertLead(lead().lead, empty(), "2026-10-29", ids);
+  assert.equal(withEmail.firm.phone, "");
+  assert.equal(withEmail.contact.phone, "+48 600 100 200");
+});
+
+test("konwersja wymaga aktywnej przestrzeni i potwierdzonego zapisu", async () => {
+  const sync = load("stores/sync.ts");
+  assert.throws(() => sync.assertWorkspace("a"), /zmieniona/);
+  let flushed = 0;
+  const off = sync.registerSync({
+    workspace: "a",
+    flush: async () => void flushed++,
+  });
+  assert.equal(sync.activeWorkspace(), "a");
+  await sync.flushWorkspace("a");
+  assert.equal(flushed, 1);
+  await assert.rejects(sync.flushWorkspace("b"), /zmieniona/);
+  off();
+  assert.equal(sync.activeWorkspace(), null);
+});
