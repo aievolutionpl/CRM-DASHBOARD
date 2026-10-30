@@ -2,12 +2,19 @@ import "server-only";
 import { database, readWorkspace, audit, transaction } from "../local/database";
 import { listDocuments, saveDocument } from "../knowledge/repository";
 import { adapter, providerConfig } from "./providers";
-import { PROVIDERS, type Provider, type IntegrationResult } from "./model";
+import {
+  PROVIDERS,
+  RESOURCE_PROVIDERS,
+  type Provider,
+  type ResourceProvider,
+  type IntegrationResult,
+} from "./model";
 import {
   connectionRows,
   connectionState,
   integrationSettings,
   saveIntegrationSettings,
+  saveMarketingRows,
 } from "./repository";
 import { credential } from "./google-vault";
 import { IntegrationError } from "./http";
@@ -47,12 +54,14 @@ export async function integrationAction(
     );
   if (
     body.action === "configure" &&
-    (provider === "ga4" ||
-      provider === "search_console" ||
-      provider === "google_ads")
+    RESOURCE_PROVIDERS.includes(provider as ResourceProvider)
   ) {
     return {
-      resource: saveIntegrationSettings(wid, provider, body.resource),
+      resource: saveIntegrationSettings(
+        wid,
+        provider as ResourceProvider,
+        body.resource,
+      ),
       message: "Zapisano usługę dla tej przestrzeni. Teraz sprawdź odczyt API.",
     };
   }
@@ -124,6 +133,11 @@ export async function integrationAction(
         }
       }
       result.synced_at = new Date().toISOString();
+      const campaigns = result.campaigns;
+      if (campaigns) {
+        if (campaigns.length) saveMarketingRows(wid, campaigns);
+        delete result.campaigns;
+      }
       transaction(() => {
         database()
           .prepare(

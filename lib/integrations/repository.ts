@@ -11,7 +11,9 @@ export function marketingRows(wid: string) {
     .map((r) => JSON.parse(String(r.payload)) as CampaignDay);
 }
 export function importMarketing(wid: string, csv: string) {
-  const rows = parseCsv(csv);
+  return saveMarketingRows(wid, parseCsv(csv));
+}
+export function saveMarketingRows(wid: string, rows: CampaignDay[]) {
   transaction(() => {
     const q = database().prepare(
       "INSERT INTO campaign_days VALUES(?,?,?,?,?) ON CONFLICT(workspace_id,date,source,campaign) DO UPDATE SET payload=excluded.payload",
@@ -63,7 +65,7 @@ export function integrationSettings(wid: string, provider: string) {
 }
 export function saveIntegrationSettings(
   wid: string,
-  provider: import("./model").GoogleProvider,
+  provider: import("./model").ResourceProvider,
   value: unknown,
 ) {
   const resource = validateResource(provider, value);

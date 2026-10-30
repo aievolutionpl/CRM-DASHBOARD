@@ -105,6 +105,13 @@ export const BRANDS: Record<string, Brand> = {
     category: "marketing",
     keywords: "facebook instagram reklamy",
   },
+  plausible: {
+    name: "Plausible Analytics",
+    mono: "P",
+    gradient: "from-indigo-400 to-indigo-700",
+    category: "analytics",
+    keywords: "statystyki ruch odwiedzający rodo cookieless",
+  },
   hubspot: {
     name: "HubSpot",
     mono: "HS",
@@ -141,13 +148,6 @@ export const PLANNED: {
   description: string;
   workaround: string;
 }[] = [
-  {
-    id: "meta_ads",
-    name: "Meta Ads",
-    description:
-      "Wydatki, zasięg i leady z kampanii Facebook i Instagram w jednym raporcie z Google Ads.",
-    workaround: "eksport CSV z Menedżera reklam → import jako źródło direct.",
-  },
   {
     id: "hubspot",
     name: "HubSpot",
