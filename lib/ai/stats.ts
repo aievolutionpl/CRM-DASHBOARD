@@ -33,6 +33,8 @@ export type StatsDigest = {
   }[];
   payments: {
     currency: string;
+    from: string;
+    to: string;
     net: number;
     count: number;
     refunded: number;
@@ -152,6 +154,8 @@ export function integrationDigest(
     payments: stripe
       ? {
           currency: stripe.currency,
+          from: stripe.from,
+          to: stripe.to,
           net: round(stripe.net),
           count: stripe.count,
           refunded: round(stripe.refunded),

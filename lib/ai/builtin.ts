@@ -172,7 +172,7 @@ function fullReport(ctx: Ctx, firm: (id: string) => string) {
   if (st?.payments) {
     const p = st.payments;
     lines.push(
-      "**Płatności (Stripe)**",
+      `**Płatności (Stripe)** · ${p.from} – ${p.to}`,
       `- Netto ${num(p.net, 2)} ${p.currency} z ${p.count} płatności, zwroty ${num(p.refunded, 2)} ${p.currency}`,
       ...(p.truncated
         ? [

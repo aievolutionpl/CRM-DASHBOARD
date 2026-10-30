@@ -1,5 +1,6 @@
 import "server-only";
 import { apiJson, IntegrationError } from "./http";
+import { today } from "../crm/model";
 import {
   validateResource,
   type IntegrationResult,
@@ -83,9 +84,12 @@ export function metaRows(rows: MetaInsight[]): CampaignDay[] {
   return [...result.values()].sort((a, b) => a.date.localeCompare(b.date));
 }
 
-export function metaWindow(now = new Date()) {
-  const day = (offset: number) =>
-    new Date(now.getTime() - offset * 864e5).toISOString().slice(0, 10);
+export function metaWindow(reportDate = today()) {
+  const day = (offset: number) => {
+    const d = new Date(`${reportDate}T12:00:00Z`);
+    d.setUTCDate(d.getUTCDate() - offset);
+    return d.toISOString().slice(0, 10);
+  };
   return { from: day(30), to: day(1) };
 }
 

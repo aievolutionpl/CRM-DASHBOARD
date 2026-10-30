@@ -339,6 +339,8 @@ test("Stripe: limit 100 transakcji trafia do agenta i raportu", () => {
             refunded: 0,
             available: 5,
             truncated: true,
+            from: "2026-09-01",
+            to: "2026-09-30",
           },
         },
       },
@@ -380,6 +382,7 @@ test("Stripe: limit 100 transakcji trafia do agenta i raportu", () => {
     ),
   );
   assert.match(r.answer, /tylko pierwsze 100 transakcji/);
+  assert.match(r.answer, /Płatności \(Stripe\)\*\* · 2026-09-01 – 2026-09-30/);
 });
 
 test("GA4: ostrzeżenia o niepełnych danych trafiają do agenta i raportu", () => {
@@ -472,8 +475,8 @@ test("Meta Ads: konto spoza PLN jest odrzucane, a okno odczytu jest jawne", asyn
       /rozlicza się w USD/,
     );
     assert.equal(urls.length, 1);
-    const window = reader("PLN").metaWindow(new Date("2026-10-30T10:00:00Z"));
-    assert.deepEqual({ ...window }, { from: "2026-09-30", to: "2026-10-29" });
+    const window = reader("PLN").metaWindow("2026-10-31");
+    assert.deepEqual({ ...window }, { from: "2026-10-01", to: "2026-10-30" });
     const result = await reader("PLN").readMeta({
       adAccountId: "act_1234567890",
     });
