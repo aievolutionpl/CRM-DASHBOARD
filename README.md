@@ -10,7 +10,9 @@ Evolution Growth OS to narzędzie dla lokalnych firm usługowych, małych zespo�
 
 **Przykład:** klient trafia z reklamy, zostawia formularz i dzwoni. W Lead Hub zapisujesz te kontakty przy jednej osobie, dodajesz ofertę, rezerwację, wykonanie pracy i wpłatę. W Company Brain zbierasz ofertę i zasady komunikacji marki. AI Brain pomaga analizować kontekst oraz proponuje zadania i notatki, które zatwierdzasz przed wykonaniem.
 
-Jasny interfejs ze szkłem i miękkimi gradientami, widok mobilny, kwoty w PLN, walidacja NIP oraz polskie daty. **AI Evolution Polska · wersja 0.10.0.** Zalecana edycja lokalna zapisuje dane w SQLite i nie wymaga konta Supabase. Podłączenie AI jest opcjonalne.
+Jasny interfejs ze szkłem i miękkimi gradientami, widok mobilny, kwoty w PLN, walidacja NIP oraz polskie daty. **AI Evolution Polska · wersja 0.11.0.** Zalecana edycja lokalna zapisuje dane w SQLite i nie wymaga konta Supabase. Podłączenie AI jest opcjonalne.
+
+**W 0.11:** **Lead Hub → CRM** jednym kliknięciem (firma, kontakt, szansa ze źródłem; agent AI widzi leady i może je przenosić), panel **„Zwrot z marketingu”** z CAC i ROAS liczonym z wygranych szans, **monitoring marki w czasie** z alertami spadków i cotygodniowym skanem w Harmonogramie, **porównanie z konkurencją**, **kalendarz .ics** i **przypomnienia w przeglądarce** dla zadań, instrukcja włączenia opinii Google oraz **CI na GitHub Actions** (lint, testy, build, Playwright SQLite, migracje Supabase).
 
 **W 0.10:** **Brand Studio — dashboard dopasowany do Twojej firmy.** Wklej adres strony www i/lub link GitHub: aplikacja pobierze logo, kolory, czcionki, kontakt, social media, ofertę, opinie (schema.org i opcjonalnie Google), audyt strony (17 kontroli SEO i konwersji), wykrytą analitykę oraz statystyki repozytoriów — i przemaluje cały interfejs w barwy marki. Nowe wykresy: **lejek konwersji**, **harmonogram zamknięć** z wartością ważoną i panel **„Jak widzą Cię klienci”**. Agent AI zna profil Twojej firmy. Szczegóły: [docs/BRAND-STUDIO.md](docs/BRAND-STUDIO.md).
 
@@ -133,6 +135,8 @@ Terminy wpisujesz jako czas miejscowy **Europe/Warsaw**. To terminarz rezerwacji
 2. Kliknij **Dopasuj dashboard**. Po kilku sekundach menu pokazuje Twoje logo i nazwę, a przyciski, wykresy i nagłówek przyjmują kolory marki.
 3. W **Profilu firmy** sprawdź opinie, audyt strony z listą poprawek, wykrytą analitykę i platformę, ofertę, kontakt oraz statystyki GitHub. Popraw nazwę, slogan, kolory lub czcionkę nagłówków.
 4. **Zapisz w Company Brain** zapisuje profil jako notatkę Markdown; **Zapytaj agenta o markę** otwiera agenta, który zna profil firmy.
+5. **Monitoruj co tydzień** dodaje zadanie w Harmonogramie: ponowny skan, historia wyniku strony i ocen oraz ostrzeżenie o spadkach.
+6. **Konkurencja:** dodaj do 3 stron konkurentów — tabela porównania (strona, opinie, social media, analityka, szybkość), lista przewag konkurencji i notatka w Company Brain.
 
 Opcjonalnie w `.env.local`: `GOOGLE_PLACES_API_KEY` (ocena i recenzje z Map Google) oraz `GITHUB_TOKEN` (wyższy limit API GitHub). Odczyt strony działa bez proxy, tak jak generator Company Brain. Profil zapisuje się w przestrzeni (przeglądarka, SQLite, Supabase — migracja `202610290001_brand_profile.sql`). Szczegóły: [docs/BRAND-STUDIO.md](docs/BRAND-STUDIO.md).
 
@@ -285,6 +289,8 @@ CSV wymaga kolumn `date, source, campaign, spend, impressions, clicks, leads, qu
 ## CRM i poczta
 
 Dodawaj firmy z NIP, kontakty, szanse z wartością w PLN i zadania. Tablica szans pozwala przesuwać etap; wykresy i wartości wynikają z aktualnych danych. CRM ma wyszukiwanie, eksporty CSV i kopię JSON.
+
+**Zadania w kalendarzu i przypomnienia:** w **Zadaniach** przycisk **Kalendarz (.ics)** pobiera otwarte zadania (całodniowe, z przypomnieniem o 9:00) i zaplanowane zlecenia (godziny w czasie Europe/Warsaw, przypomnienie godzinę wcześniej) do zaimportowania w Google Calendar, Outlooku lub Apple Calendar. To eksport, nie synchronizacja — po zmianach pobierz plik ponownie. **Włącz przypomnienia** prosi o zgodę na powiadomienia i raz dziennie po 8:00, gdy aplikacja jest otwarta, pokazuje liczbę zadań na dziś i zaległych.
 
 **Resend:** zweryfikuj domenę nadawcy, skopiuj `.env.example` do `.env.local` i uzupełnij zmienne poczty. W **Ustawieniach** wpisz własny token dostępu na czas sesji i sprawdź połączenie. Klucz Resend jest tylko na serwerze. Przed wysyłką sprawdź odbiorcę, treść i podstawę kontaktu. Wiadomości demonstracyjne do example.com/.org/.net są blokowane. „Przyjęta przez Resend” nie oznacza potwierdzonego doręczenia; brak webhooków i synchronizacji odpowiedzi. Test odczytu domen może wymagać szerszych uprawnień niż klucz tylko do wysyłki.
 

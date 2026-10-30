@@ -24,11 +24,18 @@ import {
 } from "@/lib/automation/model";
 import { Field, Icon, Modal } from "../crm/ui";
 
-const kindIcon = { report: "file", followup: "tasks", agent: "agent" } as const;
+const kindIcon = {
+  report: "file",
+  followup: "tasks",
+  agent: "agent",
+  brand: "star",
+} as const;
 const kindText = {
   report: "Tworzy raport i zapisuje go w sekcji Raporty.",
   followup: "Dodaje zadania dla otwartych szans bez kolejnego kroku.",
   agent: "Agent AI wykonuje polecenie; w autopilocie sam wprowadza zmiany.",
+  brand:
+    "Ponownie skanuje stronę i GitHub, zapisuje historię i ostrzega o spadkach.",
 };
 const when = (iso?: string) =>
   iso
@@ -97,7 +104,7 @@ function JobEditor({
           />
         </Field>
         <div
-          className="grid gap-2 sm:grid-cols-3"
+          className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4"
           role="radiogroup"
           aria-label="Rodzaj zadania"
         >

@@ -2,6 +2,8 @@
 import { useEffect, useRef } from "react";
 import { useCrm } from "./crm-store";
 import { runAgent } from "./agent-store";
+import { monitorBrand } from "./brand-scan";
+import { activeWorkspace } from "./sync";
 import { dueJobs, nextRun, type Job } from "@/lib/automation/model";
 import { generateReport } from "@/lib/reports/generate";
 import { id as newId, offsetDate, today } from "@/lib/crm/model";
@@ -37,6 +39,7 @@ function followups() {
 }
 
 export async function runJob(job: Job, manual = false) {
+  const workspace = activeWorkspace();
   const s = useCrm.getState();
   let status: "ok" | "error" = "ok",
     message = "";
@@ -62,7 +65,11 @@ export async function runJob(job: Job, manual = false) {
       });
       message = `Wygenerowano „${data.title}” · ${data.period.label}.`;
     } else if (job.kind === "followup") message = followups();
-    else {
+    else if (job.kind === "brand") {
+      const result = await monitorBrand();
+      message = result.message;
+      if (result.alerts.length) status = "error";
+    } else {
       const reply = await runAgent(job.prompt, { source: "job" });
       const executed = reply.actions.filter(
         (a) => a.status === "executed",
@@ -74,9 +81,23 @@ export async function runJob(job: Job, manual = false) {
     status = "error";
     message = e instanceof Error ? e.message : "Zadanie nie powiodło się.";
   }
+  if (activeWorkspace() !== workspace)
+    return {
+      status: "error" as const,
+      message:
+        "Przestrzeń została zmieniona w trakcie zadania — wynik odrzucono.",
+      discarded: true,
+    };
   const at = new Date();
-  const current =
-    useCrm.getState().automation.jobs.find((j) => j.id === job.id) ?? job;
+  const current = useCrm
+    .getState()
+    .automation.jobs.find((j) => j.id === job.id);
+  if (!current)
+    return {
+      status: "error" as const,
+      message: "Zadanie usunięto w trakcie wykonywania.",
+      discarded: true,
+    };
   useCrm.getState().saveJob({
     ...current,
     lastRun: at.toISOString(),
@@ -95,7 +116,7 @@ export async function runJob(job: Job, manual = false) {
     status,
     message: message.slice(0, 1000),
   });
-  return { status, message };
+  return { status, message, discarded: false };
 }
 
 const LOCK = "evolution-scheduler-lock";
@@ -129,8 +150,11 @@ export function useScheduler(enabled: boolean, notify: (text: string) => void) {
       if (!due.length || !acquire(owner)) return;
       busy.current = true;
       try {
+        const workspace = activeWorkspace();
         for (const job of due) {
+          if (activeWorkspace() !== workspace) break;
           const result = await runJob(job);
+          if (result.discarded) break;
           say.current(
             `${result.status === "ok" ? "✓" : "⚠"} Harmonogram: ${job.name} — ${result.message}`,
           );

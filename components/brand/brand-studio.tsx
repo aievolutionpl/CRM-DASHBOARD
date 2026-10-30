@@ -14,6 +14,9 @@ import type { Section } from "@/lib/crm/model";
 import { Icon } from "../crm/ui";
 import { Panel } from "../insights/kit";
 import { BrandLogo } from "./theme";
+import BrandHistory from "./brand-history";
+import Competitors from "./competitors";
+import PlacesSetup from "./places-setup";
 import { SCAN_STEPS, useBrandScan } from "./use-brand-scan";
 
 const count = (v: number) =>
@@ -457,6 +460,12 @@ export default function BrandStudio({
               ))}
             </ul>
           )}
+          <BrandHistory notify={notify} readOnly={readOnly} />
+          <Competitors
+            notify={notify}
+            readOnly={readOnly}
+            workspace={workspace}
+          />
           <div className="grid gap-5 xl:grid-cols-[1.25fr_1fr]">
             <Panel eyebrow="IDENTYFIKACJA" title="Nazwa, opis i wygląd">
               <div className="grid gap-4">
@@ -700,11 +709,7 @@ export default function BrandStudio({
                   </div>
                 </div>
               ) : (
-                <p className="mb-4 rounded-2xl bg-slate-50 p-4 text-sm text-slate-500">
-                  Nie znaleziono oceny. Dodaj dane AggregateRating na stronie
-                  lub ustaw <code>GOOGLE_PLACES_API_KEY</code>, aby pobrać
-                  opinie z Map Google.
-                </p>
+                <PlacesSetup />
               )}
               {brand.reviews.length > 0 ? (
                 <ul className="grid gap-3">

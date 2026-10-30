@@ -38,6 +38,30 @@ export type BrandGithub = {
   topics: string[];
   repos: BrandRepo[];
 };
+export type BrandPoint = {
+  at: string;
+  score: number | null;
+  rating: number | null;
+  reviews: number;
+  stars: number | null;
+  issues: number;
+};
+export type Competitor = {
+  name: string;
+  website: string;
+  logo: string;
+  scannedAt: string;
+  score: number | null;
+  rating: number | null;
+  reviews: number;
+  trackers: string[];
+  technologies: string[];
+  socials: number;
+  services: string[];
+  failed: string[];
+  responseMs: number | null;
+  color: string;
+};
 export type BrandProfile = {
   name: string;
   tagline: string;
@@ -71,6 +95,8 @@ export type BrandProfile = {
   warnings: string[];
   scannedAt: string;
   applied: boolean;
+  history: BrandPoint[];
+  competitors: Competitor[];
 };
 
 const LIMIT = 120_000;
@@ -126,6 +152,8 @@ export function emptyBrand(): BrandProfile {
     warnings: [],
     scannedAt: "",
     applied: false,
+    history: [],
+    competitors: [],
   };
 }
 
@@ -247,6 +275,53 @@ export function validateBrand(value: unknown): BrandProfile | undefined {
     warnings: strings(v.warnings, 10, 300),
     scannedAt: str(v.scannedAt, 30),
     applied: v.applied === true,
+    history: Array.isArray(v.history)
+      ? v.history
+          .filter((h) => h && typeof h === "object" && str(h.at, 30))
+          .slice(-52)
+          .map((h) => ({
+            at: str(h.at, 30),
+            score:
+              typeof h.score === "number" && Number.isFinite(h.score)
+                ? Math.min(100, Math.max(0, Math.round(h.score)))
+                : null,
+            rating:
+              typeof h.rating === "number" && Number.isFinite(h.rating)
+                ? Math.min(5, Math.max(0, h.rating))
+                : null,
+            reviews: Math.max(0, Math.round(num(h.reviews))),
+            stars:
+              typeof h.stars === "number" && Number.isFinite(h.stars)
+                ? Math.max(0, Math.round(h.stars))
+                : null,
+            issues: Math.max(0, Math.round(num(h.issues))),
+          }))
+      : [],
+    competitors: Array.isArray(v.competitors)
+      ? v.competitors.slice(0, 3).map((c) => ({
+          name: str(c?.name, 120),
+          website: safeUrl(c?.website),
+          logo: safeUrl(c?.logo),
+          scannedAt: str(c?.scannedAt, 30),
+          score:
+            typeof c?.score === "number" && Number.isFinite(c.score)
+              ? Math.min(100, Math.max(0, Math.round(c.score)))
+              : null,
+          rating:
+            typeof c?.rating === "number" && Number.isFinite(c.rating)
+              ? Math.min(5, Math.max(0, c.rating))
+              : null,
+          reviews: Math.max(0, Math.round(num(c?.reviews))),
+          trackers: strings(c?.trackers, 12, 40),
+          technologies: strings(c?.technologies, 12, 40),
+          socials: Math.max(0, Math.round(num(c?.socials))),
+          services: strings(c?.services, 8, 160),
+          failed: strings(c?.failed, 24, 120),
+          responseMs:
+            typeof c?.responseMs === "number" ? Math.round(c.responseMs) : null,
+          color: color(c?.color, "#94a3b8"),
+        }))
+      : [],
   };
 }
 
@@ -373,4 +448,118 @@ export function initials(name: string) {
       .map((w) => w[0]?.toUpperCase())
       .join("") || "AE"
   );
+}
+
+export function brandPoint(brand: BrandProfile): BrandPoint {
+  return {
+    at: brand.scannedAt || new Date().toISOString(),
+    score: brand.audit.checks.length ? brand.audit.score : null,
+    rating: brand.rating?.value ?? null,
+    reviews: brand.rating?.count ?? 0,
+    stars: brand.githubData?.stars ?? null,
+    issues: brand.audit.checks.filter((c) => !c.ok).length,
+  };
+}
+export function brandTarget(brand: Pick<BrandProfile, "website" | "github">) {
+  const host = (u: string) => {
+    try {
+      return new URL(u).hostname.toLowerCase().replace(/^www\./, "");
+    } catch {
+      return "";
+    }
+  };
+  return {
+    site: host(brand.website),
+    github: brand.github.toLowerCase().replace(/\/+$/, ""),
+  };
+}
+export function sameBrandTarget(
+  a: Pick<BrandProfile, "website" | "github">,
+  b: Pick<BrandProfile, "website" | "github">,
+) {
+  const x = brandTarget(a),
+    y = brandTarget(b);
+  return (
+    (!!x.site && x.site === y.site) || (!!x.github && x.github === y.github)
+  );
+}
+export function withHistory(
+  next: BrandProfile,
+  previous?: BrandProfile,
+): BrandProfile {
+  const point = brandPoint(next);
+  const day = point.at.slice(0, 10);
+  const kept =
+    previous && sameBrandTarget(next, previous) ? previous.history : [];
+  const history = [...kept.filter((h) => h.at.slice(0, 10) !== day), point]
+    .sort((a, b) => a.at.localeCompare(b.at))
+    .slice(-52);
+  return { ...next, history };
+}
+export function brandAlerts(history: BrandPoint[]) {
+  const [prev, last] = history.slice(-2);
+  if (!prev || !last) return [];
+  const alerts: string[] = [];
+  if (
+    prev.score !== null &&
+    last.score !== null &&
+    last.score <= prev.score - 5
+  )
+    alerts.push(`wynik strony spadł z ${prev.score} do ${last.score}`);
+  if (
+    prev.rating !== null &&
+    last.rating !== null &&
+    Math.round(last.rating * 10) <= Math.round(prev.rating * 10) - 1
+  )
+    alerts.push(
+      `ocena spadła z ${prev.rating.toFixed(1)} do ${last.rating.toFixed(1)}`,
+    );
+  if (last.issues > prev.issues)
+    alerts.push(`nowe problemy na stronie: ${last.issues - prev.issues}`);
+  if (prev.score !== null && last.score === null)
+    alerts.push("strona przestała odpowiadać przy skanie");
+  return alerts;
+}
+
+export function toCompetitor(scanned: BrandProfile): Competitor {
+  return {
+    name: scanned.name || scanned.website,
+    website: scanned.website,
+    logo: scanned.logo || scanned.icon,
+    scannedAt: scanned.scannedAt,
+    score: scanned.audit.checks.length ? scanned.audit.score : null,
+    rating: scanned.rating?.value ?? null,
+    reviews: scanned.rating?.count ?? 0,
+    trackers: scanned.trackers,
+    technologies: scanned.technologies,
+    socials: scanned.socials.length,
+    services: scanned.services.slice(0, 8),
+    failed: scanned.audit.checks.filter((c) => !c.ok).map((c) => c.label),
+    responseMs: scanned.audit.responseMs,
+    color: scanned.colors.primary,
+  };
+}
+export function competitorGaps(brand: BrandProfile) {
+  const own = toCompetitor(brand);
+  const gaps: string[] = [];
+  for (const c of brand.competitors) {
+    if (c.score !== null && own.score !== null && c.score > own.score)
+      gaps.push(`${c.name} ma lepszą stronę (${c.score} vs ${own.score}/100)`);
+    if (c.rating !== null && (own.rating === null || c.rating > own.rating))
+      gaps.push(
+        `${c.name} ma wyższą ocenę (${c.rating.toFixed(1)} vs ${own.rating?.toFixed(1) ?? "brak"})`,
+      );
+    if (c.reviews > own.reviews * 1.5 && c.reviews - own.reviews >= 10)
+      gaps.push(`${c.name} ma więcej opinii (${c.reviews} vs ${own.reviews})`);
+    if (
+      c.trackers.some((t) => !/Cookie/.test(t)) &&
+      !own.trackers.some((t) => !/Cookie/.test(t))
+    )
+      gaps.push(`${c.name} mierzy ruch (${c.trackers.join(", ")}), Ty nie`);
+    if (c.socials > own.socials + 1)
+      gaps.push(
+        `${c.name} ma więcej kanałów social (${c.socials} vs ${own.socials})`,
+      );
+  }
+  return gaps;
 }

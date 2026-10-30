@@ -86,28 +86,34 @@
   box-shadow: 0 1px 4px color-mix(in srgb, var(--brand-950) 7%, transparent);
 }
 .crm-revenue-table summary,
+.crm-data-table summary,
 .crm-dashboard-details > summary {
   cursor: pointer;
   font-weight: 600;
   color: #534a69;
 }
-.crm-revenue-table summary {
+.crm-revenue-table summary,
+.crm-data-table summary {
   font-size: 12px;
 }
-.crm-revenue-table table {
+.crm-revenue-table table,
+.crm-data-table table {
   width: 100%;
   margin-top: 12px;
   font-size: 12px;
   border-collapse: collapse;
 }
 .crm-revenue-table th,
-.crm-revenue-table td {
+.crm-revenue-table td,
+.crm-data-table th,
+.crm-data-table td {
   padding: 9px 6px;
   border-bottom: 1px solid #eeeaf4;
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
-.crm-revenue-table th:first-child {
+.crm-revenue-table th:first-child,
+.crm-data-table th:first-child {
   text-align: left;
   font-weight: 600;
 }

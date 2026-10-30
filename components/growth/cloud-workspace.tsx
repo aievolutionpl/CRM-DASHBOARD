@@ -5,6 +5,7 @@ import type { User } from "@supabase/supabase-js";
 import Workspace from "../crm/workspace";
 import Members from "./members";
 import { useCrm } from "@/stores/crm-store";
+import { registerSync } from "@/stores/sync";
 import { browserSupabase, cloudRequest } from "@/lib/supabase/browser";
 import {
   canWrite,
@@ -98,7 +99,8 @@ export default function CloudWorkspace({ user }: { user: User }) {
       automation: emptyAutomation(),
       brand: undefined,
     });
-    let unsubscribe = () => {};
+    let unsubscribe = () => {},
+      unregister = () => {};
     const save = async () => {
       if (!active || writing || !dirty.current || failure.current) return;
       writing = true;
@@ -134,6 +136,27 @@ export default function CloudWorkspace({ user }: { user: User }) {
         useCrm.setState({ ...state.data, ...state.settings });
         setLoaded(true);
         setSync(savedLabel);
+        if (canWrite(selected.role))
+          unregister = registerSync({
+            workspace: selected.id,
+            flush: async () => {
+              for (let attempt = 0; attempt < 100; attempt++) {
+                if (!active)
+                  throw Error(
+                    "Przestrzeń została zmieniona. Powtórz operację w otwartej przestrzeni.",
+                  );
+                if (failure.current)
+                  throw Error(
+                    "Nie udało się zapisać zmian CRM. Wczytaj dane z bazy i spróbuj ponownie.",
+                  );
+                if (!writing && !dirty.current) return;
+                clearTimeout(timer);
+                if (!writing) void save();
+                await new Promise((resolve) => setTimeout(resolve, 100));
+              }
+              throw Error("Zapis CRM trwa zbyt długo. Spróbuj ponownie.");
+            },
+          });
         if (canWrite(selected.role))
           unsubscribe = useCrm.subscribe((next, prev) => {
             if (hydrating) return;
@@ -195,6 +218,7 @@ export default function CloudWorkspace({ user }: { user: User }) {
     return () => {
       active = false;
       unsubscribe();
+      unregister();
       clearTimeout(timer);
       window.removeEventListener("beforeunload", unload);
     };

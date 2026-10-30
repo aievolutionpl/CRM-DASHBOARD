@@ -8,3 +8,4 @@ require("./batch.test.cjs");
 require("./brand.test.cjs");
 require("./lead-crm.test.cjs");
 require("./attribution.test.cjs");
+require("./ics.test.cjs");

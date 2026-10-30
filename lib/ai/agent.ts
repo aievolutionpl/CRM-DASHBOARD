@@ -1,4 +1,4 @@
-import type { BrandProfile } from "../brand/model";
+import { competitorGaps, type BrandProfile } from "../brand/model";
 import {
   DEAL_STAGES,
   validEmail,
@@ -127,7 +127,7 @@ Dostępne akcje (pole "type" i parametry):
 - draft_email {contactId, subject, body} — tylko szkic, nic nie jest wysyłane
 - convert_lead {leadId, name?} — przenosi leada z Lead Hub do CRM (firma, kontakt, szansa ze źródłem); tylko leady z inCrm=false
 - generate_report {kind: executive|sales|activity|services, preset: 7d|30d|month|prev_month|quarter|ytd}
-- schedule_job {name, kind: report|followup|agent, frequency: daily|weekdays|weekly|monthly, time HH:MM, weekday 0-6?, monthDay 1-28?, reportKind?, preset?, prompt? (wymagany dla agent)}
+- schedule_job {name, kind: report|followup|agent|brand, frequency: daily|weekdays|weekly|monthly, time HH:MM, weekday 0-6?, monthDay 1-28?, reportKind?, preset?, prompt? (wymagany dla agent)}
 Pole ownCompany opisuje firmę użytkownika (marka, oferta, ocena strony www, opinie) — wykorzystuj je w rekomendacjach marketingowych i szkicach wiadomości.
 Używaj istniejących identyfikatorów z kontekstu. Nową firmę możesz wskazać w kolejnych akcjach przez companyName.
 Zwróć WYŁĄCZNIE poprawny JSON: {"answer":"odpowiedź w Markdown","actions":[...]} (maks. ${ACTION_LIMIT} akcji, pusta lista gdy nic nie trzeba robić).`;
@@ -251,6 +251,15 @@ export function copilotContext(
             .map((c) => c.label)
             .slice(0, 8),
           trackers: extras.brand.trackers,
+          competitors: extras.brand.competitors.map((c) => ({
+            name: c.name,
+            website: c.website,
+            websiteScore: c.score ?? undefined,
+            rating: c.rating ?? undefined,
+            reviews: c.reviews,
+            services: c.services.slice(0, 4),
+          })),
+          competitorGaps: competitorGaps(extras.brand),
           github: extras.brand.githubData
             ? {
                 stars: extras.brand.githubData.stars,

@@ -4,14 +4,17 @@ import { id as newId, today } from "@/lib/crm/model";
 import { convertLead } from "@/lib/leads/crm";
 import { leadName, type LeadBundle, type LeadPage } from "@/lib/leads/model";
 import { useCrm } from "./crm-store";
+import { assertWorkspace, flushWorkspace } from "./sync";
 
 export async function convertLeadToCrm(
   wid: string,
   leadId: string,
   loaded?: LeadBundle,
 ) {
+  assertWorkspace(wid);
   const bundle: LeadBundle =
     loaded ?? (await cloudRequest(`/${wid}/leads/${leadId}`));
+  assertWorkspace(wid);
   const state = useCrm.getState();
   const serviceMode = state.businessMode === "services";
   const result = convertLead(
@@ -25,6 +28,7 @@ export async function convertLeadToCrm(
   if (result.contactCreated && result.contact)
     state.saveContact(result.contact);
   if (result.dealCreated && result.deal) state.saveDeal(result.deal);
+  await flushWorkspace(wid);
   const next: LeadBundle = await cloudRequest(`/${wid}/leads/${leadId}/crm`, {
     method: "POST",
     body: JSON.stringify({

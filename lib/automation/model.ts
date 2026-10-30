@@ -14,7 +14,7 @@ export const REPORT_PRESETS = [
   "ytd",
 ] as const;
 export type ReportPreset = (typeof REPORT_PRESETS)[number];
-export const JOB_KINDS = ["report", "followup", "agent"] as const;
+export const JOB_KINDS = ["report", "followup", "agent", "brand"] as const;
 export type JobKind = (typeof JOB_KINDS)[number];
 export const FREQUENCIES = ["daily", "weekdays", "weekly", "monthly"] as const;
 export type Frequency = (typeof FREQUENCIES)[number];
@@ -37,6 +37,7 @@ export const jobKindLabels: Record<JobKind, string> = {
   report: "Generuj raport",
   followup: "Zaplanuj follow-upy",
   agent: "Zadanie dla agenta AI",
+  brand: "Monitoruj markę",
 };
 export const frequencyLabels: Record<Frequency, string> = {
   daily: "Codziennie",
@@ -349,6 +350,13 @@ export const JOB_TEMPLATES: (Partial<Job> & Pick<Job, "name" | "kind">)[] = [
     kind: "followup",
     frequency: "weekdays",
     time: "09:00",
+  },
+  {
+    name: "Cotygodniowy monitoring marki",
+    kind: "brand",
+    frequency: "weekly",
+    weekday: 1,
+    time: "08:15",
   },
   {
     name: "Miesięczny raport sprzedaży",

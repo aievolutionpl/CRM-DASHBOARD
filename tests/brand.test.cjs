@@ -434,3 +434,244 @@ test("odczyt strony podąża za przekierowaniem i zwraca końcowy adres", async 
     if (saved.b !== undefined) process.env.https_proxy = saved.b;
   }
 });
+
+test("historia marki: punkty, jeden skan dziennie, alerty spadków i harmonogram", () => {
+  const automation = load("lib/automation/model.ts");
+  const base = brand.validateBrand({
+    ...brand.emptyBrand(),
+    name: "Róża",
+    website: "https://roza.example.pl/",
+    rating: { value: 4.8, count: 120, source: "Google", url: "" },
+    audit: {
+      score: 90,
+      responseMs: 100,
+      checks: [{ id: "a", label: "A", ok: true, weight: 1, hint: "" }],
+    },
+    scannedAt: "2026-10-01T08:00:00.000Z",
+  });
+  const first = brand.withHistory(base);
+  assert.deepEqual(plain(first.history), [
+    {
+      at: "2026-10-01T08:00:00.000Z",
+      score: 90,
+      rating: 4.8,
+      reviews: 120,
+      stars: null,
+      issues: 0,
+    },
+  ]);
+  const sameDay = brand.withHistory(
+    { ...base, scannedAt: "2026-10-01T18:00:00.000Z" },
+    first,
+  );
+  assert.equal(sameDay.history.length, 1);
+  assert.deepEqual(plain(brand.brandAlerts(sameDay.history)), []);
+  const worse = brand.withHistory(
+    {
+      ...base,
+      scannedAt: "2026-10-08T08:00:00.000Z",
+      rating: { ...base.rating, value: 4.6 },
+      audit: {
+        score: 80,
+        responseMs: 100,
+        checks: [{ id: "a", label: "A", ok: false, weight: 1, hint: "" }],
+      },
+    },
+    sameDay,
+  );
+  assert.equal(worse.history.length, 2);
+  const alerts = brand.brandAlerts(worse.history);
+  assert.equal(alerts.length, 3);
+  assert.match(alerts[0], /90 do 80/);
+  assert.match(alerts[1], /4\.8 do 4\.6/);
+  const many = {
+    ...worse,
+    history: Array.from({ length: 60 }, (_, i) => ({
+      at: `2026-01-${String((i % 28) + 1).padStart(2, "0")}T00:00:00Z${i}`,
+      score: 150,
+      rating: 9,
+      reviews: -1,
+      stars: 3,
+      issues: 1,
+    })),
+  };
+  const valid = brand.validateBrand(many);
+  assert.equal(valid.history.length, 52);
+  assert.equal(valid.history[0].score, 100);
+  assert.equal(valid.history[0].rating, 5);
+  assert.equal(valid.history[0].reviews, 0);
+  const job = automation.newJob(
+    {
+      name: "Monitoring",
+      kind: "brand",
+      frequency: "weekly",
+      weekday: 1,
+      time: "08:15",
+    },
+    "j1",
+    new Date("2026-10-29T10:00:00Z"),
+  );
+  assert.equal(job.kind, "brand");
+  assert.equal(automation.jobKindLabels.brand, "Monitoruj markę");
+  assert.ok(automation.JOB_TEMPLATES.some((t) => t.kind === "brand"));
+});
+
+test("konkurencja: zapis, przewagi konkurentów, notatka i kontekst agenta", () => {
+  const own = brand.validateBrand({
+    ...brand.emptyBrand(),
+    name: "Róża",
+    website: "https://roza.example.pl/",
+    rating: { value: 4.2, count: 10, source: "Google", url: "" },
+    audit: {
+      score: 70,
+      responseMs: 900,
+      checks: [{ id: "a", label: "Opis meta", ok: false, weight: 1, hint: "" }],
+    },
+    socials: [{ network: "Facebook", url: "https://facebook.com/roza" }],
+  });
+  const rival = brand.toCompetitor(
+    brand.validateBrand({
+      ...brand.emptyBrand(),
+      name: "Kwiatek",
+      website: "https://kwiatek.example.pl/",
+      rating: { value: 4.9, count: 300, source: "Google", url: "" },
+      audit: {
+        score: 88,
+        responseMs: 400,
+        checks: [{ id: "a", label: "A", ok: true, weight: 1, hint: "" }],
+      },
+      trackers: ["Google Analytics 4"],
+      socials: [1, 2, 3, 4].map((i) => ({
+        network: `N${i}`,
+        url: `https://x${i}.pl`,
+      })),
+      services: ["Bukiety", "Wesela"],
+      colors: { primary: "#16a34a", accent: "#000000", palette: [] },
+    }),
+  );
+  assert.equal(rival.score, 88);
+  assert.equal(rival.socials, 4);
+  const withRival = brand.validateBrand({
+    ...own,
+    competitors: [rival, rival, rival, rival],
+  });
+  assert.equal(withRival.competitors.length, 3);
+  const gaps = brand.competitorGaps({ ...own, competitors: [rival] });
+  assert.equal(gaps.length, 5);
+  assert.match(gaps[0], /88 vs 70/);
+  const md = markdown.competitorsMarkdown({ ...own, competitors: [rival] });
+  assert.match(md, /\| Róża \(my\) \|/);
+  assert.match(
+    md,
+    /\| Kwiatek \| https:\/\/kwiatek\.example\.pl\/ \| 88 \| 4\.9 \| 300 \|/,
+  );
+  assert.match(md, /## Gdzie konkurencja wygrywa/);
+  const ctx = JSON.parse(
+    agent.copilotContext(
+      { firms: [], contacts: [], deals: [], tasks: [], mails: [] },
+      "2026-10-29",
+      {
+        brand: { ...own, competitors: [rival] },
+      },
+    ),
+  );
+  assert.equal(ctx.ownCompany.competitors[0].name, "Kwiatek");
+  assert.equal(ctx.ownCompany.competitorGaps.length, 5);
+});
+
+test("historia: nowa firma zaczyna własną serię, spadek oceny o 0,1 jest wykrywany", () => {
+  const a = brand.validateBrand({
+    ...brand.emptyBrand(),
+    name: "A",
+    website: "https://www.firma-a.example.pl/",
+    rating: { value: 4.1, count: 10, source: "Google", url: "" },
+    scannedAt: "2026-10-01T08:00:00.000Z",
+  });
+  const first = brand.withHistory(a);
+  const rescan = brand.withHistory(
+    {
+      ...a,
+      website: "https://firma-a.example.pl/o-nas",
+      rating: { ...a.rating, value: 4.0 },
+      scannedAt: "2026-10-08T08:00:00.000Z",
+    },
+    first,
+  );
+  assert.equal(rescan.history.length, 2);
+  assert.match(brand.brandAlerts(rescan.history)[0], /4\.1 do 4\.0/);
+  const other = brand.withHistory(
+    {
+      ...a,
+      name: "B",
+      website: "https://firma-b.example.pl/",
+      scannedAt: "2026-10-09T08:00:00.000Z",
+    },
+    rescan,
+  );
+  assert.equal(other.history.length, 1);
+  assert.equal(
+    brand.sameBrandTarget(
+      { website: "", github: "https://github.com/Org" },
+      { website: "", github: "https://github.com/org/" },
+    ),
+    true,
+  );
+  assert.equal(
+    brand.sameBrandTarget(
+      { website: "", github: "" },
+      { website: "", github: "" },
+    ),
+    false,
+  );
+});
+
+test("monitoring zachowuje ręcznie zmienioną nazwę, opis i kolory tej samej marki", () => {
+  let current = brand.validateBrand({
+    ...brand.emptyBrand(),
+    name: "Moja nazwa",
+    tagline: "Mój slogan",
+    website: "https://roza.example.pl/",
+    colors: { primary: "#123456", accent: "#654321", palette: [] },
+    headingFont: "Lora",
+    useFont: true,
+    applied: true,
+  });
+  const store = {
+    getState: () => ({
+      brand: current,
+      sender: "X",
+      setBrand: (b) => (current = b),
+      setSender: () => {},
+    }),
+  };
+  const sync = load("stores/sync.ts");
+  const scan = load("stores/brand-scan.ts", {
+    "./crm-store": { useCrm: store },
+    "./agent-store": { authHeaders: async () => ({}) },
+    "./sync": sync,
+    "@/lib/brand/model": brand,
+  });
+  const scanned = brand.validateBrand({
+    ...brand.emptyBrand(),
+    name: "Kwiaciarnia Róża",
+    tagline: "Z H1",
+    website: "https://www.roza.example.pl/",
+    colors: { primary: "#e11d48", accent: "#16a34a", palette: [] },
+    scannedAt: "2026-10-29T08:00:00.000Z",
+  });
+  scan.applyScannedBrand(scanned, false, {
+    website: current.website,
+    github: "",
+  });
+  assert.equal(current.name, "Moja nazwa");
+  assert.equal(current.tagline, "Mój slogan");
+  assert.equal(current.colors.primary, "#123456");
+  assert.equal(current.headingFont, "Lora");
+  assert.equal(current.useFont, true);
+  scan.applyScannedBrand(
+    { ...scanned, website: "https://inna.example.pl/" },
+    true,
+  );
+  assert.equal(current.name, "Kwiaciarnia Róża");
+  assert.equal(current.colors.primary, "#e11d48");
+});

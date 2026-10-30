@@ -2,7 +2,7 @@
 import { useMemo } from "react";
 import { useCrm } from "@/stores/crm-store";
 import { money } from "@/lib/crm/model";
-import { channelLabel, channelReturns } from "@/lib/crm/attribution";
+import { channel, channelLabel, channelReturns } from "@/lib/crm/attribution";
 import type { CampaignDay } from "@/lib/integrations/marketing";
 import { Panel } from "./kit";
 
@@ -18,17 +18,27 @@ export default function ChannelReturns({
   from,
   to,
   spendSources = true,
+  channelFilter,
 }: {
   rows?: CampaignDay[];
   adsDaily?: { date: string; cost: number }[];
   from: string;
   to: string;
   spendSources?: boolean;
+  channelFilter?: string;
 }) {
   const deals = useCrm((s) => s.deals);
   const { channels, total, unattributed } = useMemo(
-    () => channelReturns(rows, deals, { from, to }, adsDaily),
-    [rows, deals, from, to, adsDaily],
+    () =>
+      channelReturns(
+        rows,
+        channelFilter
+          ? deals.filter((d) => channel(d.source) === channel(channelFilter))
+          : deals,
+        { from, to },
+        adsDaily,
+      ),
+    [rows, deals, from, to, adsDaily, channelFilter],
   );
   const max = Math.max(1, ...channels.map((c) => Math.max(c.spend, c.revenue)));
   const tiles = [
@@ -101,7 +111,7 @@ export default function ChannelReturns({
               Przychód z wygranych szans
             </span>
           </div>
-          <details className="crm-revenue-table mt-4">
+          <details className="crm-data-table mt-4">
             <summary>
               Tabela kanałów: CAC, ROAS, koszt leada i otwarty lejek
             </summary>

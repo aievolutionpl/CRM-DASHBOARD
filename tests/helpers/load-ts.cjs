@@ -36,6 +36,7 @@ function load(file, stubs = {}) {
       process,
       fetch: globalThis.fetch,
       AbortSignal,
+      TextEncoder,
     },
     { filename },
   );

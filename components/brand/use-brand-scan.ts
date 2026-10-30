@@ -1,8 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { useCrm } from "@/stores/crm-store";
-import { authHeaders } from "@/stores/agent-store";
-import type { BrandProfile } from "@/lib/brand/model";
+import { applyScannedBrand, scanBrandProfile } from "@/stores/brand-scan";
 
 export const SCAN_STEPS = [
   "Odczyt strony www",
@@ -13,8 +11,6 @@ export const SCAN_STEPS = [
 ];
 
 export function useBrandScan(notify: (text: string) => void) {
-  const setBrand = useCrm((s) => s.setBrand);
-  const setSender = useCrm((s) => s.setSender);
   const [busy, setBusy] = useState(false);
   const [step, setStep] = useState(0);
   const [error, setError] = useState("");
@@ -39,37 +35,15 @@ export function useBrandScan(notify: (text: string) => void) {
       1400,
     );
     try {
-      const r = await fetch("/api/brand/scan", {
-        method: "POST",
-        cache: "no-store",
-        headers: {
-          "Content-Type": "application/json",
-          ...(await authHeaders()),
-        },
-        body: JSON.stringify({ website, github }),
-        signal: controller.signal,
-      });
-      const result = await r
-        .json()
-        .catch(() => ({ error: `HTTP ${r.status}` }));
+      const scanned = await scanBrandProfile(
+        website,
+        github,
+        controller.signal,
+      );
       if (controller.signal.aborted) return;
-      if (!r.ok) throw Error(result.error || "Nie udało się przeskanować.");
-      const brand = { ...(result.brand as BrandProfile), applied: true };
-      const previous = useCrm.getState().brand;
-      if (previous?.name === brand.name) {
-        brand.colors = previous.colors;
-        brand.useFont = previous.useFont;
-        brand.headingFont = previous.headingFont || brand.headingFont;
-      }
-      setBrand(brand);
-      const sender = useCrm.getState().sender;
-      if (
-        brand.name &&
-        (!sender || /AI Evolution Polska|^Zespół$/i.test(sender))
-      )
-        setSender(`Zespół ${brand.name}`);
+      const { brand, alerts } = applyScannedBrand(scanned);
       notify(
-        `Dashboard dopasowany do marki ${brand.name}. ${brand.warnings.length ? `Uwagi: ${brand.warnings.length}.` : ""}`,
+        `Dashboard dopasowany do marki ${brand.name}. ${alerts.length ? `Od ostatniego skanu: ${alerts.join("; ")}. ` : ""}${brand.warnings.length ? `Uwagi: ${brand.warnings.length}.` : ""}`,
       );
       return brand;
     } catch (e) {

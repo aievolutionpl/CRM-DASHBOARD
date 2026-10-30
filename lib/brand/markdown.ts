@@ -1,4 +1,4 @@
-import type { BrandProfile } from "./model";
+import { competitorGaps, toCompetitor, type BrandProfile } from "./model";
 
 const list = (items: string[]) =>
   items.length ? items.map((i) => `- ${i}`).join("\n") : "- MISSING";
@@ -80,4 +80,36 @@ export function brandMarkdown(brand: BrandProfile) {
   ]
     .filter((line, i, all) => !(line === "" && all[i - 1] === ""))
     .join("\n");
+}
+
+export function competitorsMarkdown(brand: BrandProfile) {
+  const own = toCompetitor(brand);
+  const all = [{ ...own, name: `${own.name} (my)` }, ...brand.competitors];
+  const cell = (v: string | number | null) =>
+    v === null || v === "" ? "—" : String(v);
+  return [
+    `# Konkurencja — ${brand.name || "Moja firma"}`,
+    "",
+    `Porównanie publicznych stron z ${new Date().toISOString().slice(0, 10)}. Dane z odczytu HTML i schema.org — TO CONFIRM przed użyciem w komunikacji.`,
+    "",
+    `| Firma | Strona | Wynik strony | Ocena | Opinie | Analityka | Social media | Platforma |`,
+    `| --- | --- | --- | --- | --- | --- | --- | --- |`,
+    ...all.map(
+      (c) =>
+        `| ${c.name} | ${c.website || "—"} | ${cell(c.score)} | ${c.rating === null ? "—" : c.rating.toFixed(1)} | ${c.reviews} | ${c.trackers.join(", ") || "brak"} | ${c.socials} | ${c.technologies.join(", ") || "—"} |`,
+    ),
+    "",
+    "## Gdzie konkurencja wygrywa",
+    ...(competitorGaps(brand).map((g) => `- ${g}`).length
+      ? competitorGaps(brand).map((g) => `- ${g}`)
+      : ["- Nie wykryto przewag konkurencji w mierzonych obszarach."]),
+    "",
+    ...brand.competitors.flatMap((c) => [
+      `## ${c.name}`,
+      `- Strona: ${c.website}`,
+      `- Oferta i komunikaty: ${c.services.join("; ") || "MISSING"}`,
+      `- Braki na stronie: ${c.failed.join("; ") || "brak wykrytych"}`,
+      "",
+    ]),
+  ].join("\n");
 }
