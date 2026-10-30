@@ -170,6 +170,11 @@ function fullReport(ctx: Ctx, firm: (id: string) => string) {
     lines.push(
       "**Płatności (Stripe)**",
       `- Netto ${num(p.net, 2)} ${p.currency} z ${p.count} płatności, zwroty ${num(p.refunded, 2)} ${p.currency}`,
+      ...(p.truncated
+        ? [
+            "- Uwaga: odczytano tylko pierwsze 100 transakcji — sumy są niepełne.",
+          ]
+        : []),
       "",
     );
   }

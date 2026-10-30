@@ -36,6 +36,7 @@ export type StatsDigest = {
     count: number;
     refunded: number;
     available: number;
+    truncated?: boolean;
   } | null;
   productEvents: { event: string; count: number }[];
   leads: {
@@ -150,6 +151,7 @@ export function integrationDigest(
           count: stripe.count,
           refunded: round(stripe.refunded),
           available: round(stripe.available),
+          truncated: Boolean(stripe.truncated),
         }
       : null,
     productEvents: (posthog || [])

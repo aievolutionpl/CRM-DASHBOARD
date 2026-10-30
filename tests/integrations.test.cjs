@@ -401,3 +401,43 @@ test("GA4: ujemny przychód, próbkowanie i odrzucenie błędnej metryki — moc
     reset();
   }
 });
+test("Meta Ads: zmiana konta reklamowego usuwa kampanie poprzedniego konta", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "meta-db-")),
+    reset = env({ CRM_DATABASE_PATH: path.join(dir, "db.sqlite") });
+  const db = load("lib/local/database.ts"),
+    repo = load("lib/integrations/repository.ts", { "../local/database": db });
+  try {
+    const a = db.createWorkspace("A"),
+      b = db.createWorkspace("B");
+    const row = (campaign) => ({
+      date: "2026-10-01",
+      source: "meta_ads",
+      campaign,
+      spend: 10,
+      impressions: 100,
+      clicks: 5,
+      leads: 1,
+      qualified: 0,
+      revenue: 0,
+    });
+    repo.saveMarketingRows(a, [row("Import CSV")]);
+    repo.saveMarketingRows(b, [row("Inna przestrzeń")]);
+    repo.saveIntegrationSettings(a, "meta_ads", {
+      adAccountId: "act_1111111111",
+    });
+    assert.equal(repo.marketingRows(a).length, 1);
+    repo.saveMarketingRows(a, [row("Konto A")]);
+    repo.saveIntegrationSettings(a, "meta_ads", {
+      adAccountId: "act_1111111111",
+    });
+    assert.equal(repo.marketingRows(a).length, 2);
+    repo.saveIntegrationSettings(a, "meta_ads", {
+      adAccountId: "act_2222222222",
+    });
+    assert.equal(repo.marketingRows(a).length, 0);
+    assert.equal(repo.marketingRows(b).length, 1);
+  } finally {
+    reset();
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});

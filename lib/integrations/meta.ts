@@ -106,6 +106,11 @@ export async function readMeta(settings: Resource): Promise<IntegrationResult> {
     const next = result.paging?.next;
     url = next && new URL(next).hostname === "graph.facebook.com" ? next : null;
   }
+  if (url)
+    throw new IntegrationError(
+      "Meta Ads zwróciła ponad 5000 dni kampanii z 30 dni. Odczyt przerwano, aby nie zapisać niepełnych wydatków — zaimportuj dane kampanii z CSV.",
+      422,
+    );
   const rows = metaRows(all);
   const currency = String(account.currency || "").toUpperCase();
   const spend = rows.reduce((s, r) => s + r.spend, 0);

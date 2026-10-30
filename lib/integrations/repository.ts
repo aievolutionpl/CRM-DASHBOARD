@@ -83,6 +83,12 @@ export function saveIntegrationSettings(
     database()
       .prepare("DELETE FROM connections WHERE workspace_id=? AND provider=?")
       .run(wid, provider);
+    if (provider === "meta_ads" && Object.keys(previous).length)
+      database()
+        .prepare(
+          "DELETE FROM campaign_days WHERE workspace_id=? AND source='meta_ads'",
+        )
+        .run(wid);
     connectionState(wid, provider, "configured");
     audit(wid, "integration.configured");
   });

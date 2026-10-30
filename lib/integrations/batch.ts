@@ -6,6 +6,8 @@ const STATISTICS = new Set<Provider>([
   "google_ads",
   "posthog",
   "stripe",
+  "meta_ads",
+  "plausible",
 ]);
 
 export function statisticsSources(

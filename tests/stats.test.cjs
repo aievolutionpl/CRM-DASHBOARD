@@ -292,3 +292,92 @@ test("firma: status, opiekun i tagi przechodzą walidację; błędne wartości s
     backup.parseBackup(archive((d) => (d.firms[0].tags = Array(13).fill("x")))),
   );
 });
+
+test("Meta Ads: odczyt przerwany na limicie stron nie zapisuje niepełnych sum", async () => {
+  const before = process.env.META_ACCESS_TOKEN;
+  process.env.META_ACCESS_TOKEN = "token-demo-0123456789abcdef";
+  let calls = 0;
+  const endless = load("lib/integrations/meta.ts", {
+    "./http": {
+      IntegrationError: Error,
+      apiJson: async (url) => {
+        calls++;
+        if (!url.includes("/insights") && !url.includes("after="))
+          return { currency: "PLN" };
+        return {
+          data: [],
+          paging: {
+            next: `https://graph.facebook.com/v21.0/act_1/insights?after=${calls}`,
+          },
+        };
+      },
+    },
+  });
+  try {
+    await assert.rejects(
+      endless.readMeta({ adAccountId: "act_1234567890" }),
+      /ponad 5000 dni kampanii/,
+    );
+    assert.equal(calls, 11);
+  } finally {
+    if (before === undefined) delete process.env.META_ACCESS_TOKEN;
+    else process.env.META_ACCESS_TOKEN = before;
+  }
+});
+
+test("Stripe: limit 100 transakcji trafia do agenta i raportu", () => {
+  const d = stats.integrationDigest(
+    [
+      {
+        provider: "stripe",
+        payload: {
+          summary: "",
+          payments: {
+            currency: "PLN",
+            net: 10,
+            count: 100,
+            refunded: 0,
+            available: 5,
+            truncated: true,
+          },
+        },
+      },
+    ],
+    [{ provider: "stripe", status: "checked" }],
+  );
+  assert.equal(d.payments.truncated, true);
+  const r = ai.parseAnswer(
+    builtin.builtinAnswer(
+      "Przeanalizuj wszystkie statystyki firmy",
+      JSON.stringify({
+        date: "2026-10-30",
+        companies: [],
+        deals: [],
+        tasks: [],
+        notes: [],
+        crm: {
+          pipeline: {
+            open: 0,
+            openValue: 0,
+            forecast: 0,
+            wonValue: 0,
+            winRate: 0,
+          },
+          monthly: [],
+          insights: [],
+        },
+        stats: {
+          ...d,
+          marketing: {
+            bySource: [],
+            topCampaigns: [],
+            previous: { spend: 0, leads: 0, revenue: 0 },
+          },
+          leads: null,
+          sources: ["Stripe"],
+        },
+      }),
+    ),
+  );
+  assert.match(r.answer, /tylko pierwsze 100 transakcji/);
+});
