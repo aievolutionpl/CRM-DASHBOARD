@@ -1,6 +1,7 @@
 export const SOURCES = [
   "google_ads",
   "microsoft_ads",
+  "meta_ads",
   "organic",
   "gbp",
   "direct",
@@ -9,6 +10,7 @@ export type Source = (typeof SOURCES)[number];
 export const sourceLabels: Record<Source, string> = {
   google_ads: "Google Ads",
   microsoft_ads: "Microsoft Ads",
+  meta_ads: "Meta Ads",
   organic: "Organic",
   gbp: "Profil Firmy Google",
   direct: "Bezpośrednie",

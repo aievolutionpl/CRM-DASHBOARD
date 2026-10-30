@@ -9,6 +9,7 @@ import { Field, Icon } from "../crm/ui";
 import Markdown from "./markdown";
 import VoiceInput from "../ai/voice-input";
 const QUICK = [
+  "Przeanalizuj wszystkie statystyki firmy i przygotuj priorytety na ten tydzień.",
   "Co powinienem zrobić dzisiaj?",
   "Pokaż ryzyka w sprzedaży",
   "Przeanalizuj lejek i prognozę",

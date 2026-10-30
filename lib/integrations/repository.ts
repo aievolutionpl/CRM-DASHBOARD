@@ -11,14 +11,33 @@ export function marketingRows(wid: string) {
     .map((r) => JSON.parse(String(r.payload)) as CampaignDay);
 }
 export function importMarketing(wid: string, csv: string) {
-  const rows = parseCsv(csv);
+  return saveMarketingRows(wid, parseCsv(csv));
+}
+function upsertMarketingRows(wid: string, rows: CampaignDay[]) {
+  const q = database().prepare(
+    "INSERT INTO campaign_days VALUES(?,?,?,?,?) ON CONFLICT(workspace_id,date,source,campaign) DO UPDATE SET payload=excluded.payload",
+  );
+  for (const row of rows)
+    q.run(wid, row.date, row.source, row.campaign, JSON.stringify(row));
+  audit(wid, "marketing.imported");
+}
+export function saveMarketingRows(wid: string, rows: CampaignDay[]) {
+  transaction(() => upsertMarketingRows(wid, rows));
+  return rows.length;
+}
+export function replaceMarketingWindow(
+  wid: string,
+  source: CampaignDay["source"],
+  window: { from: string; to: string },
+  rows: CampaignDay[],
+) {
   transaction(() => {
-    const q = database().prepare(
-      "INSERT INTO campaign_days VALUES(?,?,?,?,?) ON CONFLICT(workspace_id,date,source,campaign) DO UPDATE SET payload=excluded.payload",
-    );
-    for (const row of rows)
-      q.run(wid, row.date, row.source, row.campaign, JSON.stringify(row));
-    audit(wid, "marketing.imported");
+    database()
+      .prepare(
+        "DELETE FROM campaign_days WHERE workspace_id=? AND source=? AND date>=? AND date<=?",
+      )
+      .run(wid, source, window.from, window.to);
+    upsertMarketingRows(wid, rows);
   });
   return rows.length;
 }
@@ -63,7 +82,7 @@ export function integrationSettings(wid: string, provider: string) {
 }
 export function saveIntegrationSettings(
   wid: string,
-  provider: import("./model").GoogleProvider,
+  provider: import("./model").ResourceProvider,
   value: unknown,
 ) {
   const resource = validateResource(provider, value);
@@ -81,6 +100,12 @@ export function saveIntegrationSettings(
     database()
       .prepare("DELETE FROM connections WHERE workspace_id=? AND provider=?")
       .run(wid, provider);
+    if (provider === "meta_ads" && Object.keys(previous).length)
+      database()
+        .prepare(
+          "DELETE FROM campaign_days WHERE workspace_id=? AND source='meta_ads'",
+        )
+        .run(wid);
     connectionState(wid, provider, "configured");
     audit(wid, "integration.configured");
   });

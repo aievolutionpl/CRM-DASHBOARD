@@ -401,3 +401,66 @@ test("GA4: ujemny przychód, próbkowanie i odrzucenie błędnej metryki — moc
     reset();
   }
 });
+test("Meta Ads: zmiana konta usuwa jego kampanie, a synchronizacja zastępuje okno dat", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "meta-db-")),
+    reset = env({ CRM_DATABASE_PATH: path.join(dir, "db.sqlite") });
+  const db = load("lib/local/database.ts"),
+    repo = load("lib/integrations/repository.ts", { "../local/database": db });
+  try {
+    const a = db.createWorkspace("A"),
+      b = db.createWorkspace("B");
+    const row = (campaign) => ({
+      date: "2026-10-01",
+      source: "meta_ads",
+      campaign,
+      spend: 10,
+      impressions: 100,
+      clicks: 5,
+      leads: 1,
+      qualified: 0,
+      revenue: 0,
+    });
+    repo.saveMarketingRows(a, [row("Import CSV")]);
+    repo.saveMarketingRows(b, [row("Inna przestrzeń")]);
+    repo.saveIntegrationSettings(a, "meta_ads", {
+      adAccountId: "act_1111111111",
+    });
+    assert.equal(repo.marketingRows(a).length, 1);
+    repo.saveMarketingRows(a, [row("Konto A")]);
+    repo.saveIntegrationSettings(a, "meta_ads", {
+      adAccountId: "act_1111111111",
+    });
+    assert.equal(repo.marketingRows(a).length, 2);
+    repo.saveIntegrationSettings(a, "meta_ads", {
+      adAccountId: "act_2222222222",
+    });
+    assert.equal(repo.marketingRows(a).length, 0);
+    assert.equal(repo.marketingRows(b).length, 1);
+    repo.saveMarketingRows(a, [
+      { ...row("Stara nazwa"), date: "2026-09-01" },
+      { ...row("Stara nazwa"), date: "2026-10-02" },
+    ]);
+    repo.saveMarketingRows(a, [{ ...row("Po oknie"), date: "2026-10-20" }]);
+    repo.replaceMarketingWindow(
+      a,
+      "meta_ads",
+      { from: "2026-09-15", to: "2026-10-10" },
+      [{ ...row("Nowa nazwa"), date: "2026-10-02" }],
+    );
+    assert.deepEqual(
+      repo
+        .marketingRows(a)
+        .map((r) => `${r.date}:${r.campaign}`)
+        .sort(),
+      [
+        "2026-09-01:Stara nazwa",
+        "2026-10-02:Nowa nazwa",
+        "2026-10-20:Po oknie",
+      ],
+    );
+    assert.equal(repo.marketingRows(b).length, 1);
+  } finally {
+    reset();
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});

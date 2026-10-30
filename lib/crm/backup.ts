@@ -1,4 +1,5 @@
 import {
+  FIRM_STATUSES,
   DEAL_STAGES,
   validEmail,
   validNip,
@@ -55,6 +56,13 @@ export function parseBackup(source: string): WorkspaceData {
         (!text(f.email, 254) || (f.email !== "" && !validEmail(f.email)))) ||
       (f.phone !== undefined && !text(f.phone, 50)) ||
       (f.address !== undefined && !text(f.address, 500)) ||
+      (f.status !== undefined && !FIRM_STATUSES.includes(f.status)) ||
+      (f.owner !== undefined && !text(f.owner, 100)) ||
+      (f.source !== undefined && !text(f.source, 100)) ||
+      (f.tags !== undefined &&
+        (!Array.isArray(f.tags) ||
+          f.tags.length > 12 ||
+          f.tags.some((t) => !text(t, 40) || !t.trim()))) ||
       !date(f.created)
     )
       throw Error("Nieprawidłowe dane firmy.");

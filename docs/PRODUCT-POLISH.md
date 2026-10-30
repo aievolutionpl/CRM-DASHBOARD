@@ -31,3 +31,17 @@ Cel: z działającego MVP zrobić produkt, który od pierwszego ekranu pokazuje 
 ![Centrum dowodzenia](screenshots/command-center.png)
 ![Evolution Agent](screenshots/evolution-agent.png)
 ![Katalog konektorów](screenshots/connectors-catalog.png)
+
+## 0.7 — konektory statystyk, menu, firmy i agent z pełnym kontekstem
+
+| Obszar              | Co dodano                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Konektory statystyk | **Meta Ads** (Graph API, `META_ACCESS_TOKEN` + konto `act_…`): dzienne wyniki kampanii trafiają do Pulpitu obok Google Ads. **Plausible Analytics** (`PLAUSIBLE_API_KEY`, opcjonalnie `PLAUSIBLE_HOST`): odwiedzający, wizyty, odsłony, odrzucenia i źródła ruchu. Wspólny formularz zasobu dla GA4, Search Console, Meta i Plausible.                                                                                                         |
+| Menu boczne         | Grupy START / SPRZEDAŻ / AI I KOMUNIKACJA / DANE I WIEDZA, zwijane (pamiętane w przeglądarce), osobne ikony, liczniki (czerwony dla zaległych zadań), znacznik aktywnej pozycji, karta przestrzeni z trybem pracy, skrót do agenta. Górny pasek przestrzeni w jednej linii z rozwijanym formularzem nowej przestrzeni.                                                                                                                         |
+| Zarządzanie firmami | Status relacji (Potencjalny, Aktywny klient, VIP, Wstrzymany, Utracony), opiekun, źródło pozyskania, tagi. KPI, zakładki statusów z licznikami, filtry branży / opiekuna / tagu, sortowanie, widok tabeli i kart, akcje zbiorcze (status, eksport, usuwanie), wskaźnik „następny krok”. Karta firmy z zakładkami: Przegląd (statystyki, dane, notatki), Kontakty, Szanse, Zadania (odhaczanie), Aktywność (e-maile) i „Zapytaj agenta”.        |
+| Agent AI            | Kontekst ze **wszystkich statystyk**: CRM (lejek, miesiące, rekomendacje), Lead Hub, kampanie per źródło z porównaniem do poprzednich 30 dni, GA4 / Search Console / Plausible, Stripe, PostHog. „Pełna analiza firmy” z priorytetami, panel „Co widzi agent”, prawdziwa rozmowa wieloturowa z OpenRouter, test połączenia dla OpenRouter / ChatGPT (Codex) / Claude Code, instrukcje podłączenia, zapamiętany silnik i model, „Nowa rozmowa”. |
+
+![Menu i pulpit](screenshots/sidebar-dashboard.png)
+![Firmy](screenshots/companies-table.png)
+![Karta firmy](screenshots/company-detail.png)
+![Pełna analiza agenta](screenshots/agent-full-analysis.png)

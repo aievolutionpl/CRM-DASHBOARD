@@ -64,3 +64,18 @@ test("brak aktywnych źródeł nie wykonuje żadnego odczytu", async () => {
   );
   assert.equal(result.length, 0);
 });
+
+test("zbiorczy odczyt obejmuje Meta Ads i Plausible", () => {
+  const configs = ["meta_ads", "plausible"].map((provider) => ({
+    provider,
+    configured: true,
+  }));
+  const states = configs.map(({ provider }) => ({
+    provider,
+    status: "checked",
+  }));
+  assert.deepEqual(Array.from(batch.statisticsSources(configs, states)), [
+    "meta_ads",
+    "plausible",
+  ]);
+});
