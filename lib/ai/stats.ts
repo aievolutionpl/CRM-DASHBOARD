@@ -57,8 +57,8 @@ export function marketingDigest(rows: CampaignDay[], today: string) {
     d.setUTCDate(d.getUTCDate() - offset);
     return d.toISOString().slice(0, 10);
   };
-  const current = rows.filter((r) => r.date > day(30) && r.date <= today);
-  const previous = rows.filter((r) => r.date > day(60) && r.date <= day(30));
+  const current = rows.filter((r) => r.date >= day(30) && r.date < today);
+  const previous = rows.filter((r) => r.date >= day(60) && r.date < day(30));
   const group = new Map<string, StatsDigest["marketing"]["bySource"][number]>();
   for (const r of current) {
     const g = group.get(r.source) ?? {
@@ -136,7 +136,10 @@ export function integrationDigest(
         from: r.from,
         to: r.to,
         totals: Object.fromEntries(
-          Object.entries(r.totals).map(([k, v]) => [k, round(v)]),
+          Object.entries(r.totals).map(([k, v]) => [
+            k,
+            Math.round(v * 1e4) / 1e4,
+          ]),
         ),
         top: r.breakdown.slice(0, 5),
         warnings: (r.warnings || []).slice(0, 3),

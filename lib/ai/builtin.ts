@@ -149,7 +149,10 @@ function fullReport(ctx: Ctx, firm: (id: string) => string) {
     lines.push(
       `**${analyticsLabel[a.provider] ?? a.provider}** · ${a.from} – ${a.to}`,
       `- ${Object.entries(a.totals)
-        .map(([k, v]) => `${metricLabel[k] ?? k}: ${num(v, 2)}`)
+        .map(
+          ([k, v]) =>
+            `${metricLabel[k] ?? k}: ${k === "ctr" ? `${num(v * 100, 2)}%` : num(v, 2)}`,
+        )
         .join(", ")}`,
     );
     if (a.top.length)

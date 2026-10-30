@@ -485,3 +485,86 @@ test("Meta Ads: konto spoza PLN jest odrzucane, a okno odczytu jest jawne", asyn
     else process.env.META_ACCESS_TOKEN = before;
   }
 });
+
+test("digest: okres kampanii pokrywa okno Meta, a CTR zachowuje precyzję", () => {
+  const row = (date, spend) => ({
+    date,
+    source: "meta_ads",
+    campaign: "K",
+    spend,
+    impressions: 0,
+    clicks: 0,
+    leads: 0,
+    qualified: 0,
+    revenue: 0,
+  });
+  const m = stats.marketingDigest(
+    [
+      row("2026-09-30", 100),
+      row("2026-10-29", 100),
+      row("2026-10-30", 7),
+      row("2026-09-29", 50),
+      row("2026-08-31", 25),
+      row("2026-08-30", 1),
+    ],
+    "2026-10-30",
+  );
+  assert.equal(m.bySource[0].spend, 200);
+  assert.equal(m.previous.spend, 75);
+  const d = stats.integrationDigest(
+    [
+      {
+        provider: "search_console",
+        payload: {
+          summary: "",
+          report: {
+            provider: "search_console",
+            resource: "sc-domain:firma.pl",
+            from: "a",
+            to: "b",
+            totals: { clicks: 40, impressions: 10000, ctr: 0.004 },
+            breakdown: [],
+            daily: [],
+            warnings: [],
+          },
+        },
+      },
+    ],
+    [],
+  );
+  assert.equal(d.analytics[0].totals.ctr, 0.004);
+  const r = ai.parseAnswer(
+    builtin.builtinAnswer(
+      "Przeanalizuj wszystkie statystyki firmy",
+      JSON.stringify({
+        date: "2026-10-30",
+        companies: [],
+        deals: [],
+        tasks: [],
+        notes: [],
+        crm: {
+          pipeline: {
+            open: 0,
+            openValue: 0,
+            forecast: 0,
+            wonValue: 0,
+            winRate: 0,
+          },
+          monthly: [],
+          insights: [],
+        },
+        stats: {
+          ...d,
+          marketing: {
+            bySource: [],
+            topCampaigns: [],
+            previous: { spend: 0, leads: 0, revenue: 0 },
+          },
+          leads: null,
+          sources: ["Search Console"],
+        },
+      }),
+    ),
+  );
+  assert.match(r.answer, /CTR: 0,4%/);
+});
