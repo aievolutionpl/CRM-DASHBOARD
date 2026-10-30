@@ -15,6 +15,7 @@ import {
   integrationSettings,
   saveIntegrationSettings,
   saveMarketingRows,
+  replaceMarketingWindow,
 } from "./repository";
 import { credential } from "./google-vault";
 import { IntegrationError } from "./http";
@@ -135,7 +136,14 @@ export async function integrationAction(
       result.synced_at = new Date().toISOString();
       const campaigns = result.campaigns;
       if (campaigns) {
-        if (campaigns.length) saveMarketingRows(wid, campaigns);
+        if (provider === "meta_ads")
+          replaceMarketingWindow(
+            wid,
+            "meta_ads",
+            new Date(Date.now() - 31 * 864e5).toISOString().slice(0, 10),
+            campaigns,
+          );
+        else if (campaigns.length) saveMarketingRows(wid, campaigns);
         delete result.campaigns;
       }
       transaction(() => {

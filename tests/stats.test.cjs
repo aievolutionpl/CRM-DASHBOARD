@@ -381,3 +381,64 @@ test("Stripe: limit 100 transakcji trafia do agenta i raportu", () => {
   );
   assert.match(r.answer, /tylko pierwsze 100 transakcji/);
 });
+
+test("GA4: ostrzeżenia o niepełnych danych trafiają do agenta i raportu", () => {
+  const d = stats.integrationDigest(
+    [
+      {
+        provider: "ga4",
+        payload: {
+          summary: "",
+          report: {
+            provider: "ga4",
+            resource: "p/1",
+            from: "a",
+            to: "b",
+            totals: { sessions: 5 },
+            breakdown: [],
+            daily: [],
+            warnings: ["Dane są próbkowane."],
+          },
+        },
+      },
+    ],
+    [],
+  );
+  assert.deepEqual(Array.from(d.analytics[0].warnings), [
+    "Dane są próbkowane.",
+  ]);
+  const r = ai.parseAnswer(
+    builtin.builtinAnswer(
+      "Przeanalizuj wszystkie statystyki firmy",
+      JSON.stringify({
+        date: "2026-10-30",
+        companies: [],
+        deals: [],
+        tasks: [],
+        notes: [],
+        crm: {
+          pipeline: {
+            open: 0,
+            openValue: 0,
+            forecast: 0,
+            wonValue: 0,
+            winRate: 0,
+          },
+          monthly: [],
+          insights: [],
+        },
+        stats: {
+          ...d,
+          marketing: {
+            bySource: [],
+            topCampaigns: [],
+            previous: { spend: 0, leads: 0, revenue: 0 },
+          },
+          leads: null,
+          sources: ["GA4"],
+        },
+      }),
+    ),
+  );
+  assert.match(r.answer, /Uwaga: Dane są próbkowane\./);
+});

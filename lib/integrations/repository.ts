@@ -13,14 +13,31 @@ export function marketingRows(wid: string) {
 export function importMarketing(wid: string, csv: string) {
   return saveMarketingRows(wid, parseCsv(csv));
 }
+function upsertMarketingRows(wid: string, rows: CampaignDay[]) {
+  const q = database().prepare(
+    "INSERT INTO campaign_days VALUES(?,?,?,?,?) ON CONFLICT(workspace_id,date,source,campaign) DO UPDATE SET payload=excluded.payload",
+  );
+  for (const row of rows)
+    q.run(wid, row.date, row.source, row.campaign, JSON.stringify(row));
+  audit(wid, "marketing.imported");
+}
 export function saveMarketingRows(wid: string, rows: CampaignDay[]) {
+  transaction(() => upsertMarketingRows(wid, rows));
+  return rows.length;
+}
+export function replaceMarketingWindow(
+  wid: string,
+  source: CampaignDay["source"],
+  from: string,
+  rows: CampaignDay[],
+) {
   transaction(() => {
-    const q = database().prepare(
-      "INSERT INTO campaign_days VALUES(?,?,?,?,?) ON CONFLICT(workspace_id,date,source,campaign) DO UPDATE SET payload=excluded.payload",
-    );
-    for (const row of rows)
-      q.run(wid, row.date, row.source, row.campaign, JSON.stringify(row));
-    audit(wid, "marketing.imported");
+    database()
+      .prepare(
+        "DELETE FROM campaign_days WHERE workspace_id=? AND source=? AND date>=?",
+      )
+      .run(wid, source, from);
+    upsertMarketingRows(wid, rows);
   });
   return rows.length;
 }

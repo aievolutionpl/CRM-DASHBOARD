@@ -401,7 +401,7 @@ test("GA4: ujemny przychód, próbkowanie i odrzucenie błędnej metryki — moc
     reset();
   }
 });
-test("Meta Ads: zmiana konta reklamowego usuwa kampanie poprzedniego konta", () => {
+test("Meta Ads: zmiana konta usuwa jego kampanie, a synchronizacja zastępuje okno dat", () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "meta-db-")),
     reset = env({ CRM_DATABASE_PATH: path.join(dir, "db.sqlite") });
   const db = load("lib/local/database.ts"),
@@ -435,6 +435,21 @@ test("Meta Ads: zmiana konta reklamowego usuwa kampanie poprzedniego konta", () 
       adAccountId: "act_2222222222",
     });
     assert.equal(repo.marketingRows(a).length, 0);
+    assert.equal(repo.marketingRows(b).length, 1);
+    repo.saveMarketingRows(a, [
+      { ...row("Stara nazwa"), date: "2026-09-01" },
+      { ...row("Stara nazwa"), date: "2026-10-02" },
+    ]);
+    repo.replaceMarketingWindow(a, "meta_ads", "2026-09-15", [
+      { ...row("Nowa nazwa"), date: "2026-10-02" },
+    ]);
+    assert.deepEqual(
+      repo
+        .marketingRows(a)
+        .map((r) => `${r.date}:${r.campaign}`)
+        .sort(),
+      ["2026-09-01:Stara nazwa", "2026-10-02:Nowa nazwa"],
+    );
     assert.equal(repo.marketingRows(b).length, 1);
   } finally {
     reset();

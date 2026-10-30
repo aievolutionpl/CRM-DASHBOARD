@@ -159,6 +159,7 @@ function fullReport(ctx: Ctx, firm: (id: string) => string) {
           .map((t) => t.label)
           .join(", ")}`,
       );
+    for (const w of a.warnings || []) lines.push(`- Uwaga: ${w}`);
     lines.push("");
   }
   if (!st?.analytics.length)

@@ -29,6 +29,7 @@ export type StatsDigest = {
     to: string;
     totals: Record<string, number>;
     top: { label: string; values: Record<string, number> }[];
+    warnings?: string[];
   }[];
   payments: {
     currency: string;
@@ -138,6 +139,7 @@ export function integrationDigest(
           Object.entries(r.totals).map(([k, v]) => [k, round(v)]),
         ),
         top: r.breakdown.slice(0, 5),
+        warnings: (r.warnings || []).slice(0, 3),
       };
     });
   const stripe = active.find((s) => s.payload.payments)?.payload.payments;
