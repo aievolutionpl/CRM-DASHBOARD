@@ -83,6 +83,12 @@ export function metaRows(rows: MetaInsight[]): CampaignDay[] {
   return [...result.values()].sort((a, b) => a.date.localeCompare(b.date));
 }
 
+export function metaWindow(now = new Date()) {
+  const day = (offset: number) =>
+    new Date(now.getTime() - offset * 864e5).toISOString().slice(0, 10);
+  return { from: day(30), to: day(1) };
+}
+
 export async function readMeta(settings: Resource): Promise<IntegrationResult> {
   if (!metaConfigured())
     throw new IntegrationError("Ustaw META_ACCESS_TOKEN w .env.local.", 400);
@@ -92,8 +98,18 @@ export async function readMeta(settings: Resource): Promise<IntegrationResult> {
     `https://graph.facebook.com/${VERSION}/${adAccountId}?fields=currency,name`,
     { headers },
   )) as { currency?: string; name?: string };
+  const currency = String(account.currency || "").toUpperCase();
+  if (currency !== "PLN")
+    throw new IntegrationError(
+      `Konto Meta rozlicza się w ${currency || "nieznanej walucie"}, a Growth OS liczy kampanie w PLN. Zaimportuj dane kampanii z CSV z kwotami przeliczonymi na PLN.`,
+      422,
+    );
+  const window = metaWindow();
+  const range = encodeURIComponent(
+    JSON.stringify({ since: window.from, until: window.to }),
+  );
   let url: string | null =
-    `https://graph.facebook.com/${VERSION}/${adAccountId}/insights?level=campaign&time_increment=1&date_preset=last_30d&limit=500&fields=campaign_name,spend,impressions,clicks,actions,action_values`;
+    `https://graph.facebook.com/${VERSION}/${adAccountId}/insights?level=campaign&time_increment=1&time_range=${range}&limit=500&fields=campaign_name,spend,impressions,clicks,actions,action_values`;
   const all: MetaInsight[] = [];
   for (let page = 0; url && page < 10; page++) {
     const result = (await apiJson(url, { headers })) as {
@@ -111,12 +127,14 @@ export async function readMeta(settings: Resource): Promise<IntegrationResult> {
       "Meta Ads zwróciła ponad 5000 dni kampanii z 30 dni. Odczyt przerwano, aby nie zapisać niepełnych wydatków — zaimportuj dane kampanii z CSV.",
       422,
     );
-  const rows = metaRows(all);
-  const currency = String(account.currency || "").toUpperCase();
+  const rows = metaRows(all).filter(
+    (r) => r.date >= window.from && r.date <= window.to,
+  );
   const spend = rows.reduce((s, r) => s + r.spend, 0);
   return {
-    summary: `Meta Ads: ${rows.length} dni kampanii z 30 dni, wydatki ${spend.toFixed(2)} ${currency || "(waluta konta)"}.${currency && currency !== "PLN" ? " Uwaga: konto rozlicza się w innej walucie niż PLN — kwoty zapisano bez przeliczenia." : ""}`,
+    summary: `Meta Ads: ${rows.length} dni kampanii z ${window.from} – ${window.to}, wydatki ${spend.toFixed(2)} PLN.`,
     campaigns: rows,
+    campaignWindow: window,
     currency,
   };
 }

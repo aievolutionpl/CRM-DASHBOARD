@@ -442,3 +442,46 @@ test("GA4: ostrzeżenia o niepełnych danych trafiają do agenta i raportu", () 
   );
   assert.match(r.answer, /Uwaga: Dane są próbkowane\./);
 });
+
+test("Meta Ads: konto spoza PLN jest odrzucane, a okno odczytu jest jawne", async () => {
+  const before = process.env.META_ACCESS_TOKEN;
+  process.env.META_ACCESS_TOKEN = "token-demo-0123456789abcdef";
+  const urls = [];
+  const reader = (currency) =>
+    load("lib/integrations/meta.ts", {
+      "./http": {
+        IntegrationError: Error,
+        apiJson: async (url) => {
+          urls.push(url);
+          if (!url.includes("/insights")) return { currency };
+          return {
+            data: [
+              {
+                date_start: "2000-01-01",
+                campaign_name: "Poza oknem",
+                spend: "5",
+              },
+            ],
+          };
+        },
+      },
+    });
+  try {
+    await assert.rejects(
+      reader("USD").readMeta({ adAccountId: "act_1234567890" }),
+      /rozlicza się w USD/,
+    );
+    assert.equal(urls.length, 1);
+    const window = reader("PLN").metaWindow(new Date("2026-10-30T10:00:00Z"));
+    assert.deepEqual({ ...window }, { from: "2026-09-30", to: "2026-10-29" });
+    const result = await reader("PLN").readMeta({
+      adAccountId: "act_1234567890",
+    });
+    assert.match(decodeURIComponent(urls.at(-1)), /time_range=\{"since":/);
+    assert.equal(result.campaigns.length, 0);
+    assert.ok(result.campaignWindow.from < result.campaignWindow.to);
+  } finally {
+    if (before === undefined) delete process.env.META_ACCESS_TOKEN;
+    else process.env.META_ACCESS_TOKEN = before;
+  }
+});

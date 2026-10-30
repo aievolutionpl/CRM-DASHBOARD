@@ -28,15 +28,15 @@ export function saveMarketingRows(wid: string, rows: CampaignDay[]) {
 export function replaceMarketingWindow(
   wid: string,
   source: CampaignDay["source"],
-  from: string,
+  window: { from: string; to: string },
   rows: CampaignDay[],
 ) {
   transaction(() => {
     database()
       .prepare(
-        "DELETE FROM campaign_days WHERE workspace_id=? AND source=? AND date>=?",
+        "DELETE FROM campaign_days WHERE workspace_id=? AND source=? AND date>=? AND date<=?",
       )
-      .run(wid, source, from);
+      .run(wid, source, window.from, window.to);
     upsertMarketingRows(wid, rows);
   });
   return rows.length;

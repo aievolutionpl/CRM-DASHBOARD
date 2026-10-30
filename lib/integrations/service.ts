@@ -136,15 +136,16 @@ export async function integrationAction(
       result.synced_at = new Date().toISOString();
       const campaigns = result.campaigns;
       if (campaigns) {
-        if (provider === "meta_ads")
+        if (result.campaignWindow)
           replaceMarketingWindow(
             wid,
             "meta_ads",
-            new Date(Date.now() - 31 * 864e5).toISOString().slice(0, 10),
+            result.campaignWindow,
             campaigns,
           );
         else if (campaigns.length) saveMarketingRows(wid, campaigns);
         delete result.campaigns;
+        delete result.campaignWindow;
       }
       transaction(() => {
         database()

@@ -71,6 +71,7 @@ export type IntegrationResult = {
   report?: GoogleReport;
   payments?: PaymentsReport;
   campaigns?: import("./marketing").CampaignDay[];
+  campaignWindow?: { from: string; to: string };
   currency?: string;
   synced_at?: string;
 };

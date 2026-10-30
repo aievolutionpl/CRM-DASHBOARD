@@ -440,15 +440,23 @@ test("Meta Ads: zmiana konta usuwa jego kampanie, a synchronizacja zastępuje ok
       { ...row("Stara nazwa"), date: "2026-09-01" },
       { ...row("Stara nazwa"), date: "2026-10-02" },
     ]);
-    repo.replaceMarketingWindow(a, "meta_ads", "2026-09-15", [
-      { ...row("Nowa nazwa"), date: "2026-10-02" },
-    ]);
+    repo.saveMarketingRows(a, [{ ...row("Po oknie"), date: "2026-10-20" }]);
+    repo.replaceMarketingWindow(
+      a,
+      "meta_ads",
+      { from: "2026-09-15", to: "2026-10-10" },
+      [{ ...row("Nowa nazwa"), date: "2026-10-02" }],
+    );
     assert.deepEqual(
       repo
         .marketingRows(a)
         .map((r) => `${r.date}:${r.campaign}`)
         .sort(),
-      ["2026-09-01:Stara nazwa", "2026-10-02:Nowa nazwa"],
+      [
+        "2026-09-01:Stara nazwa",
+        "2026-10-02:Nowa nazwa",
+        "2026-10-20:Po oknie",
+      ],
     );
     assert.equal(repo.marketingRows(b).length, 1);
   } finally {
